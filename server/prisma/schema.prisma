@@ -1,0 +1,252 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserPlan {
+  FREE
+  PREMIUM
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  username  String   @unique
+  password  String
+  firstName String
+  lastName  String
+  bio       String?
+  avatar    String?
+  coverImage String?
+  isStudent Boolean  @default(false)
+  isOnline  Boolean  @default(false)
+  lastSeen  DateTime @default(now())
+  plan      UserPlan @default(FREE)
+  planExpiresAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  posts     Post[]
+  comments  Comment[]
+  likes     Like[]
+  shares    Share[]
+  stories   Story[]
+  sentMessages     Message[] @relation("SentMessages")
+  receivedMessages Message[] @relation("ReceivedMessages")
+  sentFriendRequests     FriendRequest[] @relation("SentFriendRequests")
+  receivedFriendRequests FriendRequest[] @relation("ReceivedFriendRequests")
+  friends   Friendship[] @relation("UserFriends")
+  friendsOf Friendship[] @relation("FriendsOfUser")
+  notifications Notification[]
+  followers Follow[] @relation("UserFollowers")
+  following Follow[] @relation("UserFollowing")
+  articles   Article[]
+  articleLikes ArticleLike[]
+
+  @@map("users")
+}
+
+model Post {
+  id        String   @id @default(cuid())
+  content   String   @db.Text
+  image     String?
+  location  String?
+  isPublic  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  // Relations
+  comments Comment[]
+  likes    Like[]
+  shares   Share[]
+
+  @@map("posts")
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  authorId  String
+  postId    String?
+  articleId String?
+  parentId  String?
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  post      Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  article   Article? @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  parent    Comment? @relation("CommentParent", fields: [parentId], references: [id])
+  replies   Comment[] @relation("CommentParent")
+
+  @@map("comments")
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  userId    String
+  postId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@map("likes")
+}
+
+model Share {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  userId    String
+  postId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@map("shares")
+}
+
+model Story {
+  id        String   @id @default(cuid())
+  content   String?
+  image     String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@map("stories")
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  content   String
+  image     String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  senderId  String
+  receiverId String
+  sender    User     @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver  User     @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@map("messages")
+}
+
+model FriendRequest {
+  id        String   @id @default(cuid())
+  status    String   @default("pending") // pending, accepted, rejected
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  senderId  String
+  receiverId String
+  sender    User     @relation("SentFriendRequests", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver  User     @relation("ReceivedFriendRequests", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([senderId, receiverId])
+  @@map("friend_requests")
+}
+
+model Friendship {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  userId    String
+  friendId  String
+  user      User     @relation("UserFriends", fields: [userId], references: [id], onDelete: Cascade)
+  friend    User     @relation("FriendsOfUser", fields: [friendId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, friendId])
+  @@map("friendships")
+}
+
+model Follow {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  followerId String
+  followingId String
+  follower  User     @relation("UserFollowers", fields: [followerId], references: [id], onDelete: Cascade)
+  following User     @relation("UserFollowing", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+  @@map("follows")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  type      String   // like, comment, follow, friend_request, message
+  content   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model Article {
+  id        String   @id @default(cuid())
+  title     String
+  content   String   @db.Text
+  image     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  articleTags ArticleTag[]
+  images      ArticleImage[]
+  comments    Comment[]
+  articleLikes ArticleLike[]
+
+  @@map("articles")
+}
+
+model Tag {
+  id    String @id @default(cuid())
+  name  String @unique
+  articleTags ArticleTag[]
+
+  @@map("tags")
+}
+
+model ArticleTag {
+  id        String  @id @default(cuid())
+  article   Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  articleId String
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  tagId     String
+
+  @@unique([articleId, tagId])
+  @@map("article_tags")
+}
+
+model ArticleImage {
+  id        String   @id @default(cuid())
+  url       String
+  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  articleId String
+
+  @@map("article_images")
+}
+
+model ArticleLike {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  userId    String
+  articleId String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, articleId])
+  @@map("article_likes")
+}
