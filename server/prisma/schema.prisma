@@ -207,6 +207,7 @@ model Article {
   images      ArticleImage[]
   comments    Comment[]
   articleLikes ArticleLike[]
+  shareCount Int @default(0)
 
   @@map("articles")
 }

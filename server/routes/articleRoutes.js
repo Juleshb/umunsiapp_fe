@@ -43,4 +43,7 @@ router.get('/', articleTagController.getArticlesByTag); // supports ?tag=tagName
 router.post('/:id/images', authenticateToken, uploadConfigs.articleFull, handleUploadError, articleGalleryController.uploadImagesToArticle);
 router.delete('/images/:imageId', authenticateToken, articleGalleryController.deleteArticleImage);
 
+// Article sharing
+router.post('/:id/share', authenticateToken, articleController.shareArticle);
+
 module.exports = router; 

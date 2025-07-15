@@ -75,9 +75,21 @@ const getAllArticles = async (req, res) => {
       include: {
         author: true,
         articleTags: { include: { tag: true } },
+        images: true,
       },
     });
-    res.json(articles);
+    // For each article, fetch likeCount and commentCount
+    const articlesWithCounts = await Promise.all(articles.map(async article => {
+      const [likeCount, commentCount] = await Promise.all([
+        prisma.articleLike.count({ where: { articleId: article.id } }),
+        prisma.comment.count({ where: { articleId: article.id } }),
+      ]);
+      const image = article.image && !article.image.startsWith('http') ? getFileUrl(article.image, 'articles') : article.image;
+      const coverImage = article.coverImage && !article.coverImage.startsWith('http') ? getFileUrl(article.coverImage, 'covers') : article.coverImage;
+      const gallery = article.images ? article.images.map(img => img.url.startsWith('http') ? img.url : getFileUrl(img.url, 'articles')) : [];
+      return { ...article, image, coverImage, gallery, likeCount, commentCount };
+    }));
+    res.json(articlesWithCounts);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Failed to fetch articles.' });
@@ -104,9 +116,11 @@ const getArticleById = async (req, res) => {
       prisma.articleLike.count({ where: { articleId: id } }),
       prisma.comment.count({ where: { articleId: id } }),
     ]);
-    // Map images to include full URLs
-    const gallery = article.images.map(img => img.url.startsWith('http') ? img.url : getFileUrl(img.url, 'articles'));
-    res.json({ ...article, likeCount, commentCount, gallery });
+    // Ensure all image fields are full URLs
+    const image = article.image && !article.image.startsWith('http') ? getFileUrl(article.image, 'articles') : article.image;
+    const coverImage = article.coverImage && !article.coverImage.startsWith('http') ? getFileUrl(article.coverImage, 'covers') : article.coverImage;
+    const gallery = article.images ? article.images.map(img => img.url.startsWith('http') ? img.url : getFileUrl(img.url, 'articles')) : [];
+    res.json({ ...article, image, coverImage, likeCount, commentCount, gallery });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Failed to fetch article.' });
@@ -174,10 +188,34 @@ const deleteArticle = async (req, res) => {
   }
 };
 
+// Share an article
+const shareArticle = async (req, res) => {
+  try {
+    const { id } = req.params;
+    // Increment shareCount (add field if not present)
+    const article = await prisma.article.update({
+      where: { id },
+      data: { shareCount: { increment: 1 } },
+    });
+    // Emit real-time update
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('article-share-updated', { articleId: id, shareCount: article.shareCount });
+    }
+    // Return shareable link
+    const shareUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/articles/${id}`;
+    res.json({ message: 'Article shared.', shareUrl, shareCount: article.shareCount });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Failed to share article.' });
+  }
+};
+
 module.exports = {
   createArticle,
   getAllArticles,
   getArticleById,
   updateArticle,
   deleteArticle,
+  shareArticle,
 }; 

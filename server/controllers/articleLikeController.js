@@ -10,7 +10,14 @@ const likeArticle = async (req, res) => {
     const existing = await prisma.articleLike.findUnique({ where: { userId_articleId: { userId, articleId: id } } });
     if (existing) return res.status(400).json({ message: 'Already liked.' });
     await prisma.articleLike.create({ data: { userId, articleId: id } });
-    res.status(201).json({ message: 'Article liked.' });
+    // Get new like count
+    const likeCount = await prisma.articleLike.count({ where: { articleId: id } });
+    // Emit real-time update
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('article-like-updated', { articleId: id, likeCount });
+    }
+    res.status(201).json({ message: 'Article liked.', likeCount });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Failed to like article.' });
@@ -23,7 +30,14 @@ const unlikeArticle = async (req, res) => {
     const userId = req.user.id;
     const { id } = req.params; // articleId
     await prisma.articleLike.delete({ where: { userId_articleId: { userId, articleId: id } } });
-    res.json({ message: 'Article unliked.' });
+    // Get new like count
+    const likeCount = await prisma.articleLike.count({ where: { articleId: id } });
+    // Emit real-time update
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('article-like-updated', { articleId: id, likeCount });
+    }
+    res.json({ message: 'Article unliked.', likeCount });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Failed to unlike article.' });

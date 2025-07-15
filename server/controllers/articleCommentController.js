@@ -52,6 +52,31 @@ const addCommentToArticle = async (req, res) => {
         }
       },
     });
+    // Fetch all comments for the article (threaded)
+    const comments = await prisma.comment.findMany({
+      where: { articleId: id, parentId: null },
+      include: {
+        author: { select: { id: true, username: true, avatar: true } },
+        replies: {
+          include: {
+            author: { select: { id: true, username: true, avatar: true } },
+            replies: {
+              include: {
+                author: { select: { id: true, username: true, avatar: true } }
+              }
+            }
+          }
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+    // Emit real-time update
+    const io = req.app.get('io');
+    if (io) {
+      const commentCount = comments.length;
+      console.log('Emitting article-comment-updated', { articleId: id, comments, commentCount });
+      io.emit('article-comment-updated', { articleId: id, comments, commentCount });
+    }
     res.status(201).json(comment);
   } catch (error) {
     console.error(error);
@@ -85,6 +110,31 @@ const deleteComment = async (req, res) => {
     if (!comment) return res.status(404).json({ message: 'Comment not found.' });
     if (comment.authorId !== userId) return res.status(403).json({ message: 'You can only delete your own comments.' });
     await prisma.comment.delete({ where: { id } });
+    // Fetch all comments for the article (threaded)
+    const comments = await prisma.comment.findMany({
+      where: { articleId: comment.articleId, parentId: null },
+      include: {
+        author: { select: { id: true, username: true, avatar: true } },
+        replies: {
+          include: {
+            author: { select: { id: true, username: true, avatar: true } },
+            replies: {
+              include: {
+                author: { select: { id: true, username: true, avatar: true } }
+              }
+            }
+          }
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+    // Emit real-time update
+    const io = req.app.get('io');
+    if (io) {
+      const commentCount = comments.length;
+      console.log('Emitting article-comment-updated', { articleId: comment.articleId, comments, commentCount });
+      io.emit('article-comment-updated', { articleId: comment.articleId, comments, commentCount });
+    }
     res.json({ message: 'Comment deleted.' });
   } catch (error) {
     console.error(error);

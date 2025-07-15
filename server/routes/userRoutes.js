@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
+const userController = require('../controllers/userController');
 const { authenticateToken, optionalAuth } = require('../middleware/auth');
 const { uploadConfigs, handleUploadError } = require('../middleware/upload');
 const { userValidation } = require('../utils/validation');
@@ -28,5 +29,8 @@ router.get('/', authenticateToken, authController.searchUsers);
 
 // Get user by ID (public profile) - must come after /me routes
 router.get('/:userId', optionalAuth, authController.getUserById);
+
+// Get profile statistics
+router.get('/profile/statistics', authenticateToken, userController.getProfileStatistics);
 
 module.exports = router; 
