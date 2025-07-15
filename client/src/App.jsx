@@ -1,3 +1,4 @@
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './contexts/AuthContext';
@@ -10,8 +11,15 @@ import Profile from './pages/Profile';
 import Friends from './pages/Friends';
 import Articles from './pages/Articles';
 import ArticleView from './components/ArticleView';
+import socketService from './services/socketService';
 
 function App() {
+  // Connect socket on app mount
+  React.useEffect(() => {
+    socketService.connect();
+    console.log('SocketService: connect() called from App.jsx');
+  }, []);
+
   return (
     <AuthProvider>
       <Router>

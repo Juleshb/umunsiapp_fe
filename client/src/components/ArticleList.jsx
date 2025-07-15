@@ -2,29 +2,44 @@ import React, { useEffect, useState } from 'react';
 import { getAllArticles, getArticlesByTag } from '../services/articleService';
 import { Link } from 'react-router-dom';
 import { ChatBubbleLeftRightIcon, HeartIcon, TagIcon } from '@heroicons/react/24/outline';
+import socketService from '../services/socketService';
 
 const ArticleList = ({ tag, onTagClick }) => {
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchArticles = async () => {
-      try {
-        let data;
-        if (tag) {
-          data = await getArticlesByTag(tag);
-        } else {
-          data = await getAllArticles();
-        }
-        setArticles(data);
-      } catch (err) {
-        setError('Failed to load articles.');
-      } finally {
-        setLoading(false);
+  const fetchArticles = async () => {
+    try {
+      let data;
+      if (tag) {
+        data = await getArticlesByTag(tag);
+      } else {
+        data = await getAllArticles();
       }
-    };
+      setArticles(data);
+    } catch (err) {
+      setError('Failed to load articles.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchArticles();
+  }, [tag]);
+
+  useEffect(() => {
+    // Listen for real-time like/comment updates
+    const handleUpdate = () => {
+      fetchArticles();
+    };
+    socketService.on('article-like-updated', handleUpdate);
+    socketService.on('article-comment-updated', handleUpdate);
+    return () => {
+      socketService.off('article-like-updated', handleUpdate);
+      socketService.off('article-comment-updated', handleUpdate);
+    };
   }, [tag]);
 
   if (loading) return <div>Loading articles...</div>;

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Camera, Edit3, Save, X, Crown, GraduationCap } from 'lucide-react';
+import userService from '../services/userService';
 
 const UserProfile = () => {
   const { user, updateProfile, updateCoverImage, loading } = useAuth();
@@ -15,6 +16,9 @@ const UserProfile = () => {
   const [coverImage, setCoverImage] = useState(null);
   const [avatar, setAvatar] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState('');
+  const [stats, setStats] = useState(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [statsError, setStatsError] = useState(null);
 
   // Update form data when user changes
   useEffect(() => {
@@ -28,6 +32,22 @@ const UserProfile = () => {
       });
     }
   }, [user]);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      setStatsLoading(true);
+      try {
+        console.log('Fetching profile statistics...');
+        const data = await userService.getProfileStatistics();
+        setStats(data);
+      } catch (err) {
+        setStatsError('Failed to load statistics');
+      } finally {
+        setStatsLoading(false);
+      }
+    };
+    fetchStats();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -357,6 +377,75 @@ const UserProfile = () => {
             <div className="text-sm text-gray-600">Likes</div>
           </div>
         </div>
+      </div>
+
+      {/* Profile Statistics Section */}
+      <div className="mt-8">
+        <h2 className="text-xl font-bold mb-4 text-gray-900">Profile Statistics</h2>
+        {statsLoading ? (
+          <div>Loading statistics...</div>
+        ) : statsError ? (
+          <div className="text-red-500">{statsError}</div>
+        ) : stats ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-white rounded-lg shadow p-6 flex flex-col items-center">
+              <span className="text-3xl font-bold text-blue-600">{stats.totalPosts}</span>
+              <span className="text-gray-700 mt-2">Total Posts</span>
+            </div>
+            <div className="bg-white rounded-lg shadow p-6 flex flex-col items-center">
+              <span className="text-3xl font-bold text-purple-600">{stats.totalArticles}</span>
+              <span className="text-gray-700 mt-2">Total Articles</span>
+            </div>
+            <div className="bg-white rounded-lg shadow p-6 flex flex-col items-center">
+              <span className="text-3xl font-bold text-green-600">{stats.totalFriends}</span>
+              <span className="text-gray-700 mt-2">Total Friends</span>
+            </div>
+            <div className="bg-white rounded-lg shadow p-6 flex flex-col items-center">
+              <span className="text-3xl font-bold text-yellow-600">{stats.totalSentFriendRequests}</span>
+              <span className="text-gray-700 mt-2">Sent Friend Requests (Pending)</span>
+            </div>
+            <div className="bg-white rounded-lg shadow p-6 flex flex-col items-center md:col-span-2">
+              <span className="text-lg font-semibold text-gray-800 mb-1">Most Liked Article</span>
+              {stats.mostLikedArticle ? (
+                <>
+                  <span className="font-bold text-blue-700">{stats.mostLikedArticle.title}</span>
+                  <span className="text-gray-600">Likes: {stats.mostLikedArticle.articleLikes.length}</span>
+                </>
+              ) : (
+                <span className="text-gray-500">No articles yet</span>
+              )}
+            </div>
+            <div className="bg-white rounded-lg shadow p-6 flex flex-col items-center md:col-span-2">
+              <span className="text-lg font-semibold text-gray-800 mb-1">Recent Articles</span>
+              {stats.recentArticles && stats.recentArticles.length > 0 ? (
+                <ul className="list-disc list-inside text-gray-700">
+                  {stats.recentArticles.map(a => (
+                    <li key={a.id}>{a.title}</li>
+                  ))}
+                </ul>
+              ) : (
+                <span className="text-gray-500">No recent articles</span>
+              )}
+            </div>
+            <div className="bg-white rounded-lg shadow p-6 flex flex-col items-center md:col-span-2">
+              <span className="text-lg font-semibold text-gray-800 mb-1">Chat Analysis</span>
+              <div className="flex flex-col md:flex-row gap-4 mt-2">
+                <div className="flex flex-col items-center">
+                  <span className="text-2xl font-bold text-blue-600">{stats.chatAnalysis.totalChats}</span>
+                  <span className="text-gray-700">Total Chats</span>
+                </div>
+                <div className="flex flex-col items-center">
+                  <span className="text-2xl font-bold text-green-600">{stats.chatAnalysis.totalMessagesSent}</span>
+                  <span className="text-gray-700">Messages Sent</span>
+                </div>
+                <div className="flex flex-col items-center">
+                  <span className="text-2xl font-bold text-purple-600">{stats.chatAnalysis.totalMessagesReceived}</span>
+                  <span className="text-gray-700">Messages Received</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );

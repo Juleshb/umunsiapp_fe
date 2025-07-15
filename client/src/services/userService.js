@@ -57,6 +57,21 @@ const userService = {
     } catch (error) {
       throw error.response?.data || error.message;
     }
+  },
+
+  // Get profile statistics
+  getProfileStatistics: async () => {
+    const token = localStorage.getItem('token');
+    const res = await fetch('/api/users/profile/statistics', {
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    if (!res.ok) throw new Error('Failed to fetch profile statistics');
+    return await res.json();
   }
 };
 

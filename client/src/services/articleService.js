@@ -135,4 +135,15 @@ export const uploadArticleImages = async (articleId, files) => {
 export const deleteArticleImage = async (imageId) => {
   const res = await axios.delete(`${API_URL}/images/${imageId}`, { withCredentials: true });
   return res.data;
+};
+
+export const shareArticle = async (articleId) => {
+  const token = localStorage.getItem('token');
+  const res = await axios.post(`${API_URL}/${articleId}/share`, {}, {
+    withCredentials: true,
+    headers: {
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    },
+  });
+  return res.data;
 }; 

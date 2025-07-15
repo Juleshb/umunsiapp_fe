@@ -3,6 +3,7 @@ import { getArticleComments, addArticleComment } from '../services/articleServic
 import { useAuth } from '../contexts/AuthContext';
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 import CommentItem from './CommentItem';
+import socketService from '../services/socketService';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5002';
 const defaultAvatar = '/default-avatar.png'; // Place a default avatar in public folder
@@ -29,7 +30,7 @@ const getUserAvatar = (user) => {
   return `https://ui-avatars.com/api/?name=${getUserDisplayName(user)}&background=random`;
 };
 
-const ArticleComments = ({ articleId }) => {
+const ArticleComments = ({ articleId, comments: propComments }) => {
   const { user } = useAuth();
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -37,21 +38,43 @@ const ArticleComments = ({ articleId }) => {
   const [content, setContent] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const fetchComments = async () => {
-    setLoading(true);
-    try {
-      const data = await getArticleComments(articleId);
-      setComments(data);
-    } catch (err) {
-      setError('Failed to load comments.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Always fetch comments on mount if not provided
+  useEffect(() => {
+    let mounted = true;
+    const fetchComments = async () => {
+      setLoading(true);
+      try {
+        let initialComments = propComments;
+        if (!initialComments) {
+          initialComments = await getArticleComments(articleId);
+        }
+        if (mounted) {
+          setComments(initialComments);
+          setLoading(false);
+        }
+      } catch (err) {
+        if (mounted) {
+          setError('Failed to load comments.');
+          setLoading(false);
+        }
+      }
+    };
+    fetchComments();
+    return () => { mounted = false; };
+  }, [articleId, propComments]);
 
   useEffect(() => {
-    fetchComments();
-    // eslint-disable-next-line
+    if (!articleId) return;
+    // Listen for real-time comment updates
+    const handleCommentUpdate = (data) => {
+      if (data.articleId === articleId) {
+        setComments(data.comments);
+      }
+    };
+    socketService.on('article-comment-updated', handleCommentUpdate);
+    return () => {
+      socketService.off('article-comment-updated', handleCommentUpdate);
+    };
   }, [articleId]);
 
   const handleSubmit = async (e) => {
@@ -61,7 +84,7 @@ const ArticleComments = ({ articleId }) => {
     try {
       await addArticleComment(articleId, { content });
       setContent('');
-      fetchComments();
+      // Do NOT call fetchComments(); real-time event will update comments
     } catch (err) {
       setError('Failed to add comment.');
     } finally {
@@ -108,7 +131,7 @@ const ArticleComments = ({ articleId }) => {
               key={comment.id}
               comment={comment}
               articleId={articleId}
-              onCommentChange={fetchComments}
+              // onCommentChange is not needed; real-time updates handle comment changes
             />
           ))}
         </div>

@@ -5,7 +5,7 @@ import { addArticleComment, updateArticleComment, deleteArticleComment } from '.
 const BASE_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5002';
 const defaultAvatar = '/default-avatar.png'; // Place a default avatar in public folder
 
-const CommentItem = ({ comment, articleId, onCommentChange, depth = 0 }) => {
+const CommentItem = ({ comment, articleId, depth = 0 }) => {
   const { user } = useAuth();
   const [replying, setReplying] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -21,7 +21,7 @@ const CommentItem = ({ comment, articleId, onCommentChange, depth = 0 }) => {
       await addArticleComment(articleId, { content: replyContent, parentId: comment.id });
       setReplying(false);
       setReplyContent('');
-      onCommentChange();
+      // Do not update UI here; real-time event will update
     } catch {}
     setLoading(false);
   };
@@ -33,7 +33,7 @@ const CommentItem = ({ comment, articleId, onCommentChange, depth = 0 }) => {
     try {
       await updateArticleComment(comment.id, { content: editContent });
       setEditing(false);
-      onCommentChange();
+      // Do not update UI here; real-time event will update
     } catch {}
     setLoading(false);
   };
@@ -42,7 +42,7 @@ const CommentItem = ({ comment, articleId, onCommentChange, depth = 0 }) => {
     setLoading(true);
     try {
       await deleteArticleComment(comment.id);
-      onCommentChange();
+      // Do not update UI here; real-time event will update
     } catch {}
     setLoading(false);
   };
@@ -138,7 +138,7 @@ const CommentItem = ({ comment, articleId, onCommentChange, depth = 0 }) => {
         {comment.replies && comment.replies.length > 0 && (
           <div className="space-y-4 mt-2">
             {comment.replies.map(reply => (
-              <CommentItem key={reply.id} comment={reply} articleId={articleId} onCommentChange={onCommentChange} depth={depth + 1} />
+              <CommentItem key={reply.id} comment={reply} articleId={articleId} depth={depth + 1} />
             ))}
           </div>
         )}

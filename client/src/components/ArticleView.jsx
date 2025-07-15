@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getArticleById, deleteArticle, likeArticle, unlikeArticle, getArticleLikes, deleteArticleImage } from '../services/articleService';
+import { getArticleById, deleteArticle, likeArticle, unlikeArticle, getArticleLikes, deleteArticleImage, getArticleComments, shareArticle } from '../services/articleService';
 import { useAuth } from '../contexts/AuthContext';
 import EditArticleModal from './EditArticleModal';
 import ArticleComments from './ArticleComments';
@@ -8,8 +8,41 @@ import { TagIcon, HeartIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24
 import Navbar from '../layouts/Navbar';
 import Sidebar from '../layouts/Sidebar';
 import RightSidebar from './RightSidebar';
+import socketService from '../services/socketService';
 
-const BASE_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5002';
+// Use the backend API URL as the base for images
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5002';
+
+// Helper to resolve any image URL (main, cover, gallery)
+const getImageUrl = (img, type = 'articles') => {
+  if (!img) return '';
+  let url = typeof img === 'string' ? img : img.url;
+  if (!url) return '';
+
+  // If already a full URL, return as is
+  if (url.startsWith('http')) return url;
+
+  // Gallery images: always ensure /gallery/ subdir
+  if (type === 'gallery' || /^gallery-\d+-\d+\.(jpeg|jpg|png|webp|gif)$/i.test(url)) {
+    url = url.replace(/^gallery\//, ''); // Remove any leading gallery/
+    return `${BASE_URL}/uploads/articles/gallery/${url}`;
+  }
+
+  // Main article image
+  if (type === 'articles' || /^article-\d+-\d+\.(jpeg|jpg|png|webp|gif)$/i.test(url)) {
+    url = url.replace(/^articles\//, '');
+    return `${BASE_URL}/uploads/articles/${url}`;
+  }
+
+  // Cover image
+  if (type === 'covers' || /^coverImage-\d+-\d+\.(jpeg|jpg|png|webp|gif)$/i.test(url)) {
+    url = url.replace(/^covers\//, '');
+    return `${BASE_URL}/uploads/covers/${url}`;
+  }
+
+  // Fallback
+  return `${BASE_URL}/uploads/${url}`;
+};
 
 const getUserDisplayName = (user) => {
   if (!user) return 'Unknown User';
@@ -27,42 +60,11 @@ const getUserAvatar = (user) => {
     if (user.avatar.startsWith('http')) {
       return user.avatar;
     }
-    if (user.avatar.startsWith('uploads/')) {
-      return `${BASE_URL}/${user.avatar}`;
-    }
-    if (user.avatar.startsWith('avatars/')) {
-      return `${BASE_URL}/uploads/${user.avatar}`;
-    }
-    return `${BASE_URL}/uploads/avatars/${user.avatar}`;
+    // Always use /uploads/avatars/ and never /api/
+    let avatarPath = user.avatar.replace(/^avatars\//, '');
+    return `http://localhost:5002/uploads/avatars/${avatarPath}`;
   }
   return `https://ui-avatars.com/api/?name=${getUserDisplayName(user)}&background=random`;
-};
-
-const getImageUrl = (img) => {
-  if (!img) return '';
-  if (img.url) {
-    let url = img.url;
-    if (/^gallery-\d+-\d+\.(jpeg|jpg|png|webp|gif)$/i.test(url) && !url.includes('gallery/')) {
-      url = `gallery/${url}`;
-    }
-    if (url.startsWith('http')) return url;
-    if (url.startsWith('uploads/')) return `${BASE_URL}/${url}`;
-    if (url.startsWith('articles/')) return `${BASE_URL}/uploads/${url}`;
-    if (url.startsWith('gallery/')) return `${BASE_URL}/uploads/articles/gallery/${url}`;
-    return `${BASE_URL}/uploads/articles/${url}`;
-  }
-  if (typeof img === 'string') {
-    let url = img;
-    if (/^gallery-\d+-\d+\.(jpeg|jpg|png|webp|gif)$/i.test(url) && !url.includes('gallery/')) {
-      url = `gallery/${url}`;
-    }
-    if (url.startsWith('http')) return url;
-    if (url.startsWith('uploads/')) return `${BASE_URL}/${url}`;
-    if (url.startsWith('articles/')) return `${BASE_URL}/uploads/${url}`;
-    if (url.startsWith('gallery/')) return `${BASE_URL}/uploads/articles/gallery/${url}`;
-    return `${BASE_URL}/uploads/articles/${url}`;
-  }
-  return '';
 };
 
 const ArticleView = () => {
@@ -71,20 +73,31 @@ const ArticleView = () => {
   const [article, setArticle] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [editOpen, setEditOpen] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState(false);
-  const [progress, setProgress] = useState(0);
   const contentRef = useRef();
   const navigate = useNavigate();
   const [likes, setLikes] = useState({ count: 0, users: [] });
   const [liked, setLiked] = useState(false);
-  const [showLikers, setShowLikers] = useState(false);
+  const [comments, setComments] = useState([]);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
+  const [shareCount, setShareCount] = useState(article?.shareCount || 0);
 
   useEffect(() => {
     const fetchArticle = async () => {
       try {
         const data = await getArticleById(id);
         setArticle(data);
+        // Fetch initial comments
+        const initialComments = await getArticleComments(id);
+        setComments(initialComments);
+        // Fetch likes and set liked state
+        const likeData = await getArticleLikes(id);
+        setLikes(likeData);
+        if (user) {
+          setLiked(likeData.users.some(u => u.id === user.id));
+        } else {
+          setLiked(false);
+        }
       } catch (err) {
         setError('Failed to load article.');
       } finally {
@@ -92,66 +105,61 @@ const ArticleView = () => {
       }
     };
     fetchArticle();
-  }, [id, editOpen]);
+  }, [id, user]);
 
   useEffect(() => {
-    const fetchLikes = async () => {
-      if (!article) return;
-      const data = await getArticleLikes(article.id);
-      setLikes(data);
-      setLiked(user && data.users.some(u => u.id === user.id));
-    };
-    fetchLikes();
-  }, [article, user]);
-
-  // Reading progress bar logic
-  useEffect(() => {
-    const handleScroll = () => {
-      if (!contentRef.current) return;
-      const rect = contentRef.current.getBoundingClientRect();
-      const windowHeight = window.innerHeight;
-      const totalHeight = contentRef.current.scrollHeight - windowHeight;
-      const scrolled = window.scrollY - contentRef.current.offsetTop;
-      let percent = 0;
-      if (totalHeight > 0) {
-        percent = Math.min(100, Math.max(0, (scrolled / totalHeight) * 100));
+    if (!article) return;
+    // Real-time like updates
+    const handleLikeUpdate = (data) => {
+      if (data.articleId === article.id) {
+        setLikes((prev) => ({ ...prev, count: data.likeCount }));
+        setArticle((prev) => prev ? { ...prev, likeCount: data.likeCount } : prev);
       }
-      setProgress(percent);
     };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [article]);
+    socketService.on('article-like-updated', handleLikeUpdate);
 
-  const handleDelete = async () => {
-    try {
-      await deleteArticle(id);
-      navigate('/articles');
-    } catch (err) {
-      setError('Failed to delete article.');
-    }
-  };
+    // Real-time comment updates
+    const handleCommentUpdate = (data) => {
+      if (data.articleId === article.id) {
+        console.log('ArticleView received article-comment-updated', data);
+        setArticle((prev) => prev ? { ...prev, commentCount: data.commentCount } : prev);
+        setComments(data.comments);
+      }
+    };
+    socketService.on('article-comment-updated', handleCommentUpdate);
+
+    return () => {
+      socketService.off('article-like-updated', handleLikeUpdate);
+      socketService.off('article-comment-updated', handleCommentUpdate);
+    };
+  }, [article]);
 
   const handleLike = async () => {
     if (!user) return;
-    if (liked) {
-      await unlikeArticle(article.id);
-    } else {
-      await likeArticle(article.id);
+    try {
+      if (liked) {
+        await unlikeArticle(article.id);
+      } else {
+        await likeArticle(article.id);
+      }
+      // After like/unlike, fetch likes again to update state
+      const likeData = await getArticleLikes(article.id);
+      setLikes(likeData);
+      setLiked(likeData.users.some(u => u.id === user.id));
+    } catch (err) {
+      // Optionally show error
     }
-    const data = await getArticleLikes(article.id);
-    setLikes(data);
-    setLiked(!liked);
   };
 
-  const handleDeleteImage = async (imageId) => {
-    await deleteArticleImage(imageId);
-    // Refetch article after deletion
-    const data = await getArticleById(article.id);
-    setArticle(data);
-  };
-
-  const handleTagClick = (tag) => {
-    // Implement tag filter navigation or callback here
+  const handleShare = async () => {
+    try {
+      const res = await shareArticle(article.id);
+      setShareUrl(res.shareUrl);
+      setShareCount(res.shareCount);
+      setShareModalOpen(true);
+    } catch (err) {
+      // Optionally show error
+    }
   };
 
   if (loading) return <div>Loading...</div>;
@@ -195,28 +203,27 @@ const ArticleView = () => {
                 {article.tags && article.tags.length > 0 && (
                   <div className="flex flex-wrap gap-2 mb-2">
                     {article.tags.map(t => (
-                      <button
-                        key={t.tag.name}
-                        onClick={() => handleTagClick(t.tag.name)}
-                        className="flex items-center gap-1 bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-xs font-medium hover:bg-blue-100 transition border border-gray-200"
-                      >
+                      <span key={t.tag.name} className="flex items-center gap-1 bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-xs font-medium border border-gray-200">
                         <TagIcon className="w-3 h-3" />
                         {t.tag.name}
-                      </button>
+                      </span>
                     ))}
                   </div>
                 )}
                 {/* Images/Media */}
-                {(article.coverImage || (article.gallery && article.gallery.length > 0)) && (
-                  <div className="mt-3 flex flex-wrap gap-2">
+                {(article.image || article.coverImage || (article.gallery && article.gallery.length > 0)) && (
+                  <div className="mt-3 flex flex-col gap-2">
+                    {article.image && (
+                      <img src={getImageUrl(article.image, 'articles')} alt="Main" className="rounded-xl object-cover max-h-80 w-full" />
+                    )}
                     {article.coverImage && (
-                      <img src={getImageUrl(article.coverImage)} alt="Cover" className="rounded-xl object-cover max-h-80 w-full" />
+                      <img src={getImageUrl(article.coverImage, 'covers')} alt="Cover" className="rounded-xl object-cover max-h-80 w-full" />
                     )}
                     {article.gallery && article.gallery.length > 0 && (
                       <div className="flex gap-2 w-full overflow-x-auto scrollbar-hide">
-                        {article.gallery.map((url, idx) => (
+                        {article.gallery.map((img, idx) => (
                           <div key={idx} className="relative group min-w-[120px]">
-                            <img src={getImageUrl(url)} alt="Gallery" className="rounded-xl object-cover w-32 h-32" />
+                            <img src={getImageUrl(img, 'gallery')} alt={`Gallery ${idx + 1}`} className="rounded-xl object-cover w-32 h-32" />
                           </div>
                         ))}
                       </div>
@@ -230,28 +237,28 @@ const ArticleView = () => {
                 <span>{article.commentCount || 0} comments</span>
               </div>
               {/* Action Bar */}
-              <div className="flex items-center justify-between px-4 py-2 border-t border-gray-100">
+              <div className="flex items-center gap-8 px-4 py-2 border-t border-b">
                 <button
                   onClick={handleLike}
-                  className={`flex items-center gap-2 p-2 rounded-lg transition ${liked ? 'text-red-500 hover:bg-red-50' : 'text-gray-500 hover:bg-gray-100'}`}
+                  className={`flex items-center gap-2 p-2 rounded-full transition text-2xl ${liked ? 'text-red-500 hover:bg-red-50' : 'text-gray-500 hover:bg-gray-100'}`}
                   disabled={!user}
                 >
-                  <HeartIcon className="h-5 w-5" />
-                  <span className="text-sm font-medium">Like</span>
+                  <HeartIcon className="h-7 w-7" />
                 </button>
                 <button
                   onClick={() => document.getElementById(`comments-${article.id}`)?.scrollIntoView({ behavior: 'smooth' })}
-                  className="flex items-center gap-2 p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition"
+                  className="flex items-center gap-2 p-2 rounded-full text-gray-500 hover:bg-gray-100 transition text-2xl"
                 >
-                  <ChatBubbleLeftRightIcon className="h-5 w-5" />
-                  <span className="text-sm font-medium">Comment</span>
+                  <ChatBubbleLeftRightIcon className="h-7 w-7" />
                 </button>
-                <button className="flex items-center gap-2 p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition">
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M4 12v7a2 2 0 002 2h12a2 2 0 002-2v-7" /><polyline points="16 6 12 2 8 6" /><line x1="12" y1="2" x2="12" y2="15" /></svg>
-                  <span className="text-sm font-medium">Share</span>
-                </button>
-                <button className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition">
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" /></svg>
+                <button
+                  onClick={handleShare}
+                  className="flex items-center gap-2 p-2 rounded-full text-gray-500 hover:bg-gray-100 transition text-2xl"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-7 w-7">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 12h9m0 0l-3.75-3.75M16.5 12l-3.75 3.75" />
+                  </svg>
+                  <span className="text-base">{shareCount}</span>
                 </button>
               </div>
             </div>
@@ -266,6 +273,32 @@ const ArticleView = () => {
           <RightSidebar />
         </div>
       </div>
+      {shareModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-lg p-6 max-w-sm w-full flex flex-col items-center">
+            <h2 className="text-lg font-bold mb-2">Share this article</h2>
+            <input
+              type="text"
+              value={shareUrl}
+              readOnly
+              className="w-full border rounded px-3 py-2 mb-3 text-center text-gray-700"
+              onFocus={e => e.target.select()}
+            />
+            <button
+              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 mb-2"
+              onClick={() => { navigator.clipboard.writeText(shareUrl); }}
+            >
+              Copy Link
+            </button>
+            <button
+              className="text-gray-500 hover:underline"
+              onClick={() => setShareModalOpen(false)}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

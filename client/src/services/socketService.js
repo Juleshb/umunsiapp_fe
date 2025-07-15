@@ -65,6 +65,18 @@ class SocketService {
       console.log('Story deleted:', storyId);
       this.notifyListeners('story-deleted', storyId);
     });
+
+    // Listen for article like updates (real-time likes)
+    this.socket.on('article-like-updated', (data) => {
+      console.log('Article like updated:', data);
+      this.notifyListeners('article-like-updated', data);
+    });
+
+    // Listen for article comment updates (real-time comments)
+    this.socket.on('article-comment-updated', (data) => {
+      console.log('Article comment updated:', data);
+      this.notifyListeners('article-comment-updated', data);
+    });
   }
 
   // Add event listener
