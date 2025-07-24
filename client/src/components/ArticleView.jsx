@@ -137,11 +137,11 @@ const ArticleView = () => {
   const handleLike = async () => {
     if (!user) return;
     try {
-      if (liked) {
-        await unlikeArticle(article.id);
-      } else {
-        await likeArticle(article.id);
-      }
+    if (liked) {
+      await unlikeArticle(article.id);
+    } else {
+      await likeArticle(article.id);
+    }
       // After like/unlike, fetch likes again to update state
       const likeData = await getArticleLikes(article.id);
       setLikes(likeData);

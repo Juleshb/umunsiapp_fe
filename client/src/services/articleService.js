@@ -135,7 +135,7 @@ export const uploadArticleImages = async (articleId, files) => {
 export const deleteArticleImage = async (imageId) => {
   const res = await axios.delete(`${API_URL}/images/${imageId}`, { withCredentials: true });
   return res.data;
-};
+}; 
 
 export const shareArticle = async (articleId) => {
   const token = localStorage.getItem('token');

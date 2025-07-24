@@ -9,21 +9,21 @@ const ArticleList = ({ tag, onTagClick }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchArticles = async () => {
-    try {
-      let data;
-      if (tag) {
-        data = await getArticlesByTag(tag);
-      } else {
-        data = await getAllArticles();
+    const fetchArticles = async () => {
+      try {
+        let data;
+        if (tag) {
+          data = await getArticlesByTag(tag);
+        } else {
+          data = await getAllArticles();
+        }
+        setArticles(data);
+      } catch (err) {
+        setError('Failed to load articles.');
+      } finally {
+        setLoading(false);
       }
-      setArticles(data);
-    } catch (err) {
-      setError('Failed to load articles.');
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
   useEffect(() => {
     fetchArticles();
