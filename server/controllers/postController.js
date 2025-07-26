@@ -315,11 +315,12 @@ const deletePost = async (req, res) => {
   }
 };
 
-// Like post
-const likePost = async (req, res) => {
+// Toggle like/unlike post
+const toggleLike = async (req, res) => {
   try {
     const { postId } = req.params;
     const userId = req.user.id;
+    const io = req.app.get('io');
 
     // Check if already liked
     const existingLike = await prisma.like.findUnique({
@@ -331,73 +332,48 @@ const likePost = async (req, res) => {
       }
     });
 
+    let isLiked;
     if (existingLike) {
-      return res.status(400).json({
-        success: false,
-        message: 'You have already liked this post'
-      });
-    }
-
-    const like = await prisma.like.create({
-      data: {
-        userId,
-        postId
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            username: true,
-            firstName: true,
-            lastName: true,
-            avatar: true
+      // Unlike
+      await prisma.like.delete({
+        where: {
+          userId_postId: {
+            userId,
+            postId
           }
         }
-      }
-    });
-
-    if (like.user.avatar) {
-      like.user.avatar = getFileUrl(like.user.avatar, 'avatars');
-    }
-
-    res.json({
-      success: true,
-      message: 'Post liked successfully',
-      data: like
-    });
-  } catch (error) {
-    console.error('Like post error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to like post'
-    });
-  }
-};
-
-// Unlike post
-const unlikePost = async (req, res) => {
-  try {
-    const { postId } = req.params;
-    const userId = req.user.id;
-
-    await prisma.like.delete({
-      where: {
-        userId_postId: {
+      });
+      isLiked = false;
+    } else {
+      // Like
+      await prisma.like.create({
+        data: {
           userId,
           postId
         }
-      }
-    });
+      });
+      isLiked = true;
+    }
+
+    // Get new like count
+    const likeCount = await prisma.like.count({ where: { postId } });
+
+    // Emit real-time update
+    if (io) {
+      io.emit('post-like-updated', { postId, likeCount });
+    }
 
     res.json({
       success: true,
-      message: 'Post unliked successfully'
+      message: isLiked ? 'Post liked' : 'Post unliked',
+      isLiked,
+      likeCount
     });
   } catch (error) {
-    console.error('Unlike post error:', error);
+    console.error('Toggle like error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to unlike post'
+      message: 'Failed to toggle like'
     });
   }
 };
@@ -449,13 +425,14 @@ const addComment = async (req, res) => {
   try {
     const { postId } = req.params;
     const userId = req.user.id;
-    const { content } = req.body;
+    const { content, parentId } = req.body;
 
     const comment = await prisma.comment.create({
       data: {
         content,
         authorId: userId,
-        postId
+        postId,
+        parentId: parentId || null
       },
       include: {
         author: {
@@ -474,6 +451,58 @@ const addComment = async (req, res) => {
 
     if (comment.author.avatar) {
       comment.author.avatar = getFileUrl(comment.author.avatar, 'avatars');
+    }
+
+    // Emit real-time update after adding comment
+    const io = req.app.get('io');
+    if (io) {
+      // Get latest comment count and comments (first page, top-level only)
+      const commentCount = await prisma.comment.count({ where: { postId } });
+      const comments = await prisma.comment.findMany({
+        where: { postId, parentId: null },
+        include: {
+          author: {
+            select: {
+              id: true,
+              username: true,
+              firstName: true,
+              lastName: true,
+              avatar: true,
+              isStudent: true,
+              plan: true
+            }
+          },
+          replies: {
+            include: {
+              author: {
+                select: {
+                  id: true,
+                  username: true,
+                  firstName: true,
+                  lastName: true,
+                  avatar: true,
+                  isStudent: true,
+                  plan: true
+                }
+              }
+            },
+            orderBy: { createdAt: 'asc' }
+          }
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 10
+      });
+      comments.forEach(comment => {
+        if (comment.author.avatar) {
+          comment.author.avatar = getFileUrl(comment.author.avatar, 'avatars');
+        }
+        comment.replies.forEach(reply => {
+          if (reply.author.avatar) {
+            reply.author.avatar = getFileUrl(reply.author.avatar, 'avatars');
+          }
+        });
+      });
+      io.emit('post-comment-updated', { postId, commentCount, comments });
     }
 
     res.status(201).json({
@@ -577,8 +606,7 @@ module.exports = {
   getPostById,
   updatePost,
   deletePost,
-  likePost,
-  unlikePost,
+  toggleLike,
   sharePost,
   addComment,
   getComments,

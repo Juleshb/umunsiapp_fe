@@ -3,6 +3,7 @@ import PostCard from '../../components/PostCard';
 import QuickPost from '../../components/QuickPost';
 import CreatePostModal from '../../components/CreatePostModal';
 import postService from '../../services/postService';
+import socketService from '../../services/socketService';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
@@ -16,6 +17,19 @@ const Feed = () => {
   // Fetch posts on component mount
   useEffect(() => {
     fetchPosts();
+  }, []);
+
+  useEffect(() => {
+    // Listen for real-time post like/comment updates
+    const handleUpdate = () => {
+      fetchPosts(1); // Refetch first page for simplicity
+    };
+    socketService.on('post-like-updated', handleUpdate);
+    socketService.on('post-comment-updated', handleUpdate);
+    return () => {
+      socketService.off('post-like-updated', handleUpdate);
+      socketService.off('post-comment-updated', handleUpdate);
+    };
   }, []);
 
   const fetchPosts = async (pageNum = 1) => {
@@ -57,7 +71,7 @@ const Feed = () => {
   };
 
   return (
-    <div className="flex flex-col items-center w-full">
+    <div className="">
       <QuickPost onCreatePost={handleQuickPost} />
       
       {loading && posts.length === 0 ? (

@@ -1,44 +1,70 @@
 import React from 'react';
 
-const Story = ({ story }) => {
-  const hasMultipleStories = story.hasMultipleStories || (story.slides && story.slides.length > 1);
-  const isNewStory = story.isNew;
+const Story = ({ story, isCreateCard, isYourStory, user }) => {
+  if (isCreateCard) {
+    return (
+      <div className="flex flex-col items-center gap-2 cursor-pointer group w-24 sm:w-28">
+        <div className="relative w-full h-36 sm:h-40 rounded-xl bg-gray-100 flex flex-col items-center justify-center shadow-md overflow-hidden">
+          <img
+            src={user?.avatar || 'https://ui-avatars.com/api/?name=U'}
+            alt={user?.firstName}
+            className="absolute inset-0 w-full h-full object-cover rounded-xl"
+          />
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-white rounded-full p-1 shadow">
+            <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+            </div>
+          </div>
+        </div>
+        <span className="text-xs font-semibold text-gray-700 mt-1">Create story</span>
+      </div>
+    );
+  }
 
-  return (
-    <div className="flex flex-col items-center gap-1 cursor-pointer group">
-      <div className="relative">
-        <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-full p-0.5 transition-colors ${
-          isNewStory 
-            ? 'bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 animate-pulse' 
-            : 'bg-gray-200 hover:bg-gray-300'
-        }`}>
-          <img 
-            src={story.user.avatar} 
+  if (isYourStory) {
+    // Use the last slide's image as background if available
+    const lastImage = story.slides && story.slides.length > 0 ? story.slides[0].content : story.user.avatar;
+    return (
+      <div className="flex flex-col items-center gap-2 cursor-pointer group w-24 sm:w-28">
+        <div className="relative w-full h-36 sm:h-40 rounded-xl shadow-md overflow-hidden border-2 border-blue-500">
+          <img
+            src={lastImage}
             alt={story.user.name}
-            className="w-full h-full rounded-full object-cover border-2 border-white"
+            className="w-full h-full object-cover rounded-xl"
+          />
+          <div className="absolute top-2 left-2 w-8 h-8 rounded-full border-4 border-blue-500">
+            <img
+              src={story.user.avatar}
+              alt={story.user.name}
+              className="w-full h-full object-cover rounded-full"
+            />
+          </div>
+        </div>
+        <span className="text-xs font-semibold text-gray-700 mt-1">Your story</span>
+      </div>
+    );
+  }
+
+  // Other stories
+  // Use the last slide's image as background if available
+  const lastImage = story.slides && story.slides.length > 0 ? story.slides[0].content : story.user.avatar;
+  return (
+    <div className="flex flex-col items-center gap-2 cursor-pointer group w-24 sm:w-28">
+      <div className="relative w-full h-36 sm:h-40 rounded-xl shadow-md overflow-hidden">
+        <img
+          src={lastImage}
+          alt={story.user.name}
+          className="w-full h-full object-cover rounded-xl"
+        />
+        <div className="absolute top-2 left-2 w-8 h-8 rounded-full border-4 border-blue-500">
+          <img
+            src={story.user.avatar}
+            alt={story.user.name}
+            className="w-full h-full object-cover rounded-full"
           />
         </div>
-        {story.isLive && (
-          <div className="absolute -bottom-1 -right-1 w-3 h-3 sm:w-4 sm:h-4 bg-red-500 rounded-full border-2 border-white flex items-center justify-center">
-            <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-white rounded-full animate-pulse"></div>
-          </div>
-        )}
-        {hasMultipleStories && (
-          <div className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-blue-500 rounded-full border-2 border-white flex items-center justify-center">
-            <span className="text-xs text-white font-bold">{story.slides.length}</span>
-          </div>
-        )}
-        {isNewStory && (
-          <div className="absolute -top-1 -left-1 w-3 h-3 sm:w-4 sm:h-4 bg-green-500 rounded-full border-2 border-white flex items-center justify-center animate-pulse">
-            <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-white rounded-full"></div>
-          </div>
-        )}
       </div>
-      <span className={`text-xs truncate max-w-14 sm:max-w-16 group-hover:text-gray-800 transition text-center ${
-        isNewStory ? 'text-purple-600 font-semibold' : 'text-gray-600'
-      }`}>
-        {story.user.name}
-      </span>
+      <span className="text-xs font-semibold text-gray-700 mt-1 truncate w-full text-center">{story.user.name}</span>
     </div>
   );
 };

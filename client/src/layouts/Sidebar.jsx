@@ -12,6 +12,7 @@ import {
   Settings,
   HelpCircle
 } from 'lucide-react';
+import Logo from '../assets/Logo.png';
 
 const BASE_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5002';
 const getUserAvatar = (user) => {
@@ -51,92 +52,76 @@ const Sidebar = ({ onCreatePost, onCreateStory, onCreateArticle }) => {
   const isActive = (path) => location.pathname === path;
 
   return (
-    <div className="w-full bg-white shadow-sm border-r border-gray-200 h-full">
-      <div className="p-6">
+    <div className="fixed left-0 top-0 w-20 shadow-sm border-r border-gray-200 h-full flex flex-col z-[999] rounded-tr-2xl rounded-br-2xl" style={{ background: 'linear-gradient(135deg, rgba(252,252,252,0.7) 0%, rgba(107,207,99,0.7) 100%)', backdropFilter: 'blur(2px)' }}>
+      {/* Logo at the top */}
+      <div className="flex items-center justify-center h-16">
+        <img src={Logo} alt="App Logo" className="w-12 h-12 rounded-lg object-contain" />
+      </div>
+      <div className="p-6 flex flex-col flex-1">
         {/* User Profile Section */}
-        <div className="mb-8">
-          <div className="flex items-center space-x-3 mb-4">
-            <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-              <img
-                src={getUserAvatar(user)}
-                alt={user?.firstName}
-                className="w-12 h-12 rounded-full object-cover"
-              />
-            </div>
-            <div>
-              <h3 className="font-semibold text-gray-900">
-                {user?.firstName} {user?.lastName}
-              </h3>
-              <p className="text-sm text-gray-500">@{user?.username}</p>
-            </div>
-          </div>
-          
-          {/* Action Buttons */}
-          <div className="space-y-3">
+        <div className="mb-8 flex flex-col items-center">
+          <div className="w-full flex flex-col items-center justify-center gap-4 mt-2 mb-8">
             <button
               onClick={onCreatePost}
-              className="w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white py-2 px-4 rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-200 font-medium"
+              className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-700 text-white text-2xl transition-all"
+              title="Create Post"
             >
-              <Plus className="h-5 w-5" />
-              <span>Create Post</span>
+              <Plus className="h-7 w-7" />
             </button>
-            
             <button
               onClick={onCreateStory}
-              className="w-full flex items-center justify-center space-x-2 bg-white border border-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-50 transition-all duration-200 font-medium"
+              className="flex items-center justify-center w-12 h-12 rounded-full border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-2xl transition-all"
+              title="Add Story"
             >
-              <Camera className="h-5 w-5" />
-              <span>Add Story</span>
+              <Camera className="h-7 w-7" />
             </button>
             {user?.plan === 'PREMIUM' && (
               <button
                 onClick={onCreateArticle}
-                className="w-full flex items-center justify-center space-x-2 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-all duration-200 font-medium"
+                className="flex items-center justify-center w-12 h-12 rounded-full bg-green-600 hover:bg-green-700 text-white text-2xl transition-all"
+                title="Create Article"
               >
-                <Plus className="h-5 w-5" />
-                <span>Create Article</span>
+                <Plus className="h-7 w-7" />
               </button>
             )}
           </div>
         </div>
-
         {/* Navigation */}
-        <nav className="space-y-2">
+        <nav className="flex flex-col gap-2 items-center mt-4">
           {navigation.map((item) => {
             const Icon = item.icon;
+            // Example: show badge for Chat
+            const showBadge = item.name === 'Chat';
+            const badgeCount = 2; // Replace with real count if available
             return (
               <Link
                 key={item.name}
                 to={item.href}
-                className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-                  isActive(item.href)
-                    ? 'bg-blue-50 text-blue-600 border-r-2 border-blue-600'
-                    : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
-                }`}
+                className={`relative flex items-center justify-center w-12 h-12 rounded-xl transition-colors
+                  ${isActive(item.href) ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600' : 'text-gray-700 hover:bg-gray-100'}`}
               >
-                <Icon className={`h-5 w-5 ${isActive(item.href) ? 'text-blue-600' : 'text-gray-400'}`} />
-                <span className="font-medium">{item.name}</span>
+                <span className={`flex items-center justify-center w-10 h-10 rounded-xl ${isActive(item.href) ? 'bg-blue-100' : 'bg-gray-100'} transition-all`}>
+                  <Icon className={`h-6 w-6 ${isActive(item.href) ? 'text-blue-600' : 'text-gray-400'}`} />
+                  {showBadge && (
+                    <span className="absolute top-2 right-2 bg-blue-500 text-white text-xs rounded-full px-1.5 py-0.5">{badgeCount}</span>
+                  )}
+                </span>
               </Link>
             );
           })}
         </nav>
-
         {/* Quick Stats */}
-        <div className="mt-8 p-4 bg-gray-50 rounded-lg">
-          <h4 className="font-semibold text-gray-900 mb-3">Quick Stats</h4>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-600">Posts today:</span>
-              <span className="font-medium">0</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Friends:</span>
-              <span className="font-medium">0</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Plan:</span>
-              <span className="font-medium capitalize">{user?.plan?.toLowerCase() || 'free'}</span>
-            </div>
+        {/* (Removed) */}
+        {/* User avatar at bottom */}
+        <div className="flex flex-col items-center mb-4 mt-auto">
+          <div className="relative">
+            <img
+              src={getUserAvatar(user)}
+              alt={user?.firstName}
+              className="w-12 h-12 rounded-full object-cover border aspect-square"
+              style={{ width: '30px', height: '30px', aspectRatio: '1 / 1' }}
+            />
+            <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></span>
           </div>
         </div>
       </div>

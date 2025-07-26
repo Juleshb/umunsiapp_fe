@@ -16,9 +16,8 @@ router.put('/:postId', authenticateToken, checkOwnership('post'), uploadConfigs.
 // Delete post
 router.delete('/:postId', authenticateToken, checkOwnership('post'), postController.deletePost);
 
-// Like/unlike post
-router.post('/:postId/like', authenticateToken, idValidation.postId, postController.likePost);
-router.delete('/:postId/like', authenticateToken, idValidation.postId, postController.unlikePost);
+// Like/unlike post (toggle)
+router.post('/:postId/like', authenticateToken, idValidation.postId, postController.toggleLike);
 // Share post
 router.post('/:postId/share', authenticateToken, idValidation.postId, postController.sharePost);
 

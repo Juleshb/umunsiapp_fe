@@ -101,11 +101,11 @@ const idValidation = {
     validate
   ],
   postId: [
-    param('postId').isUUID().withMessage('Valid post ID is required'),
+    param('postId').notEmpty().withMessage('Valid post ID is required'),
     validate
   ],
   commentId: [
-    param('commentId').isUUID().withMessage('Valid comment ID is required'),
+    param('commentId').notEmpty().withMessage('Valid comment ID is required'),
     validate
   ],
   storyId: [

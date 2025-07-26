@@ -10,7 +10,7 @@ const Chat = () => {
   const [selectedChat, setSelectedChat] = useState(null);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       <Navbar />
       
       <div className="flex pt-16">

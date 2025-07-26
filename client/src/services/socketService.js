@@ -45,6 +45,12 @@ class SocketService {
 
     // Set up story event listeners
     this.setupStoryListeners();
+
+    if (typeof window !== 'undefined' && this.socket) {
+      this.socket.onAny((event, ...args) => {
+        console.log('Socket event received:', event, args);
+      });
+    }
   }
 
   setupStoryListeners() {
@@ -76,6 +82,18 @@ class SocketService {
     this.socket.on('article-comment-updated', (data) => {
       console.log('Article comment updated:', data);
       this.notifyListeners('article-comment-updated', data);
+    });
+
+    // Listen for post like updates (real-time likes)
+    this.socket.on('post-like-updated', (data) => {
+      console.log('Post like updated:', data);
+      this.notifyListeners('post-like-updated', data);
+    });
+
+    // Listen for post comment updates (real-time comments)
+    this.socket.on('post-comment-updated', (data) => {
+      console.log('Post comment updated:', data);
+      this.notifyListeners('post-comment-updated', data);
     });
   }
 

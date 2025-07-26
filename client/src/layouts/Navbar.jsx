@@ -13,6 +13,7 @@ import {
   Crown,
   GraduationCap
 } from 'lucide-react';
+import Logo from '../assets/Logo.png';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5002';
 const BASE_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5002';
@@ -80,180 +81,61 @@ const Navbar = () => {
   }
 
   return (
-    <nav className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          {/* Logo and Brand */}
-          <div className="flex items-center">
-            <Link to="/" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">C</span>
-              </div>
-              <span className="text-xl font-bold text-gray-900">ChatApp</span>
-            </Link>
+    <nav className="sticky top-0 z-40 bg-transparent py-2">
+      <div className="max-w-5xl mx-auto px-2">
+        <div className="flex items-center justify-between rounded-2xl border border-gray-200 shadow-sm px-4 py-2" style={{ background: 'linear-gradient(135deg, rgba(252, 252, 252, 0.7) 0%, rgba(107,207,99,0.7) 100%)', backdropFilter: 'blur(2px)' }}>
+          {/* Logo and App Name */}
+          <div className="flex items-center gap-2">
+            <img src={Logo} alt="App Logo" className="w-8 h-8 rounded-lg object-contain" />
+            <span className="text-lg font-bold" style={{ fontFamily: 'Poppins, Inter, sans-serif', color: '#FFD600' }}>Umunsi Media</span>
           </div>
-
-          {/* Search Bar - Desktop */}
-          <div className="hidden md:flex flex-1 max-w-md mx-8">
-            <div className="relative w-full">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-5 w-5 text-gray-400" />
-              </div>
+          {/* Search Bar */}
+          <div className="flex items-center gap-2 flex-1 justify-center">
+            <div className="flex items-center bg-gray-100 rounded-xl px-3 py-1 border border-gray-200">
+              <Search className="h-5 w-5 text-gray-400 mr-2" />
               <input
                 type="text"
-                placeholder="Search people, posts, or topics..."
-                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                placeholder="Search"
+                className="bg-transparent outline-none border-none text-sm w-32"
               />
+              <span className="ml-2 text-xs text-gray-400 font-mono">⌘+K</span>
             </div>
-          </div>
-
-          {/* Navigation Items - Desktop */}
-          <div className="hidden md:flex items-center space-x-4">
-            {/* Notifications */}
-            <button className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
-              <Bell className="h-6 w-6" />
-              <span className="absolute top-1 right-1 block h-2 w-2 rounded-full bg-red-400"></span>
+            <button className="ml-3 flex items-center justify-center w-10 h-10 rounded-xl bg-gray-100 border border-gray-200 hover:bg-gray-200 transition">
+              <Bell className="h-5 w-5 text-gray-500" />
             </button>
-
-            {/* Messages */}
-            <Link
-              to="/chat"
-              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <MessageCircle className="h-6 w-6" />
-            </Link>
-
-            {/* User Profile Menu */}
-            <div className="relative">
-              <button
-                onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
-                className="flex items-center space-x-2 p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                  <img
-                    src={getUserAvatar(user)}
-                    alt={user.firstName}
-                    className="w-8 h-8 rounded-full object-cover"
-                  />
-                </div>
-                <span className="hidden lg:block text-sm font-medium">
-                  {user?.firstName} {user?.lastName}
-                </span>
-              </button>
-
-              {/* Profile Dropdown */}
-              {isProfileMenuOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
-                  {/* User Info */}
-                  <div className="px-4 py-3 border-b border-gray-100">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                        <img
-                          src={getUserAvatar(user)}
-                          alt={user.firstName}
-                          className="w-10 h-10 rounded-full object-cover"
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {user?.firstName} {user?.lastName}
-                        </p>
-                        <p className="text-sm text-gray-500 truncate">
-                          @{user?.username}
-                        </p>
-                        {getPlanBadge()}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Menu Items */}
-                  <div className="py-1">
-                    <Link
-                      to="/profile"
-                      className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                      onClick={() => setIsProfileMenuOpen(false)}
-                    >
-                      <User className="h-4 w-4 mr-3" />
-                      Profile
-                    </Link>
-                    <button className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
-                      <Settings className="h-4 w-4 mr-3" />
-                      Settings
-                    </button>
-                    <button
-                      onClick={handleLogout}
-                      className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
-                    >
-                      <LogOut className="h-4 w-4 mr-3" />
-                      Sign out
-                    </button>
-                  </div>
-                </div>
-              )}
+          </div>
+          {/* User Profile with Dropdown */}
+          <div className="relative flex items-center bg-gray-100 rounded-xl px-2 py-1 border border-gray-200 ml-3 cursor-pointer select-none" onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}>
+            <img
+              src={getUserAvatar(user)}
+              alt={user.firstName}
+              className="w-8 h-8 rounded-full object-cover mr-2"
+            />
+            <div className="flex flex-col mr-2">
+              <span className="text-sm font-semibold text-gray-900 leading-tight">{user?.firstName} {user?.lastName}</span>
+              <span className="text-xs text-gray-500 leading-tight">{user?.email}</span>
             </div>
-          </div>
-
-          {/* Mobile menu button */}
-          <div className="md:hidden">
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            <button className="ml-1 text-gray-500 hover:text-gray-700">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
             </button>
+            {isProfileMenuOpen && (
+              <div className="absolute right-0 top-12 w-48 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-50">
+                <button
+                  onClick={() => { setIsProfileMenuOpen(false); navigate('/profile'); }}
+                  className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-t-xl transition"
+                >
+                  Go to Profile
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 rounded-b-xl transition"
+                >
+                  Logout
+                </button>
+              </div>
+            )}
           </div>
         </div>
-
-        {/* Mobile Menu */}
-        {isMenuOpen && (
-          <div className="md:hidden">
-            <div className="px-2 pt-2 pb-3 space-y-1 border-t border-gray-200">
-              {/* Search Bar - Mobile */}
-              <div className="relative mb-4">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Search..."
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-
-              {/* Mobile Navigation Items */}
-              <Link
-                to="/"
-                className="flex items-center px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                <span className="text-sm font-medium">Home</span>
-              </Link>
-              <Link
-                to="/chat"
-                className="flex items-center px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                <MessageCircle className="h-5 w-5 mr-3" />
-                <span className="text-sm font-medium">Messages</span>
-              </Link>
-              <Link
-                to="/profile"
-                className="flex items-center px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                <User className="h-5 w-5 mr-3" />
-                <span className="text-sm font-medium">Profile</span>
-              </Link>
-              <button
-                onClick={handleLogout}
-                className="flex items-center w-full px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-              >
-                <LogOut className="h-5 w-5 mr-3" />
-                <span className="text-sm font-medium">Sign out</span>
-              </button>
-            </div>
-          </div>
-        )}
       </div>
     </nav>
   );

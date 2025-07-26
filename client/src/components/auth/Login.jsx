@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Eye, EyeOff, Mail, Lock, Loader2 } from 'lucide-react';
+import Logo from '../../assets/Logo.png';
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -63,10 +64,8 @@ const Login = () => {
       <div className="max-w-md w-full space-y-8">
         {/* Header */}
         <div className="text-center">
-          <div className="mx-auto h-16 w-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mb-4">
-            <span className="text-2xl font-bold text-white">C</span>
-          </div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome back</h2>
+          <img src={Logo} alt="Umuhuza Media Logo" className="mx-auto h-20 w-20 rounded-full object-contain mb-4" />
+          <h2 className="text-3xl font-bold mb-2" style={{ color: '#FFB600' }}>Welcome back</h2>
           <p className="text-gray-600">Sign in to your account to continue</p>
         </div>
 

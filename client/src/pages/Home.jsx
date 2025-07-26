@@ -62,7 +62,7 @@ const Home = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       <Navbar />
       
       <div className="flex pt-16">
@@ -79,14 +79,14 @@ const Home = () => {
         <main className="flex-1 lg:ml-64 lg:mr-80 px-4 py-6 pb-20 lg:pb-6">
           <div className="max-w-2xl mx-auto">
             {/* Welcome Message */}
-            <div className="mb-6">
+            {/* <div className="mb-6">
               <h1 className="text-2xl font-bold text-gray-900">
                 Welcome back, {user?.firstName}! 👋
               </h1>
               <p className="text-gray-600 mt-1">
                 What's on your mind today?
               </p>
-            </div>
+            </div> */}
 
             {/* Stories */}
             <StoriesContainer 

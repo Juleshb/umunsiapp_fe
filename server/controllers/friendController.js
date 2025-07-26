@@ -1,5 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+const onlineUsers = require('../utils/onlineUsers');
 
 // Send friend request
 const sendRequest = async (req, res) => {
@@ -264,7 +265,11 @@ const getFriends = async (req, res) => {
     res.json({
       success: true,
       data: {
-        friends: friends.map(f => f.friend),
+        friends: friends.map(f => {
+          const friend = f.friend;
+          friend.isOnline = onlineUsers.has(friend.id);
+          return friend;
+        }),
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),

@@ -1,159 +1,174 @@
-import React, { useState } from 'react';
-import { MagnifyingGlassIcon, PlusIcon, EllipsisVerticalIcon } from '@heroicons/react/24/outline';
+import React, { useEffect, useState } from 'react';
+import friendService from '../services/friendService';
+import userService from '../services/userService';
+import { useAuth } from '../contexts/AuthContext';
+import socketService from '../services/socketService';
 
 const ChatList = ({ onSelectChat, selectedChat }) => {
-  const [searchQuery, setSearchQuery] = useState('');
+  const { user } = useAuth();
+  const [friends, setFriends] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [allUsers, setAllUsers] = useState([]);
+  const [showAllUsers, setShowAllUsers] = useState(false);
+  const [lastMessages, setLastMessages] = useState({}); // { userId: { text, time, unreadCount } }
 
-  const mockChats = [
-    {
-      id: 1,
-      user: {
-        name: 'Alice Johnson',
-        avatar: 'https://randomuser.me/api/portraits/women/44.jpg',
-        isOnline: true,
-        lastSeen: '2 min ago',
-      },
-      lastMessage: 'Hey! How are you doing?',
-      timestamp: '2 min ago',
-      unreadCount: 2,
-    },
-    {
-      id: 2,
-      user: {
-        name: 'Bob Smith',
-        avatar: 'https://randomuser.me/api/portraits/men/32.jpg',
-        isOnline: false,
-        lastSeen: '1 hour ago',
-      },
-      lastMessage: 'Thanks for the help!',
-      timestamp: '1 hour ago',
-      unreadCount: 0,
-    },
-    {
-      id: 3,
-      user: {
-        name: 'Carol Lee',
-        avatar: 'https://randomuser.me/api/portraits/women/68.jpg',
-        isOnline: true,
-        lastSeen: 'Online',
-      },
-      lastMessage: 'See you tomorrow!',
-      timestamp: '3 hours ago',
-      unreadCount: 1,
-    },
-    {
-      id: 4,
-      user: {
-        name: 'David Wilson',
-        avatar: 'https://randomuser.me/api/portraits/men/75.jpg',
-        isOnline: false,
-        lastSeen: 'Yesterday',
-      },
-      lastMessage: 'The project looks great!',
-      timestamp: 'Yesterday',
-      unreadCount: 0,
-    },
-    {
-      id: 5,
-      user: {
-        name: 'Emma Davis',
-        avatar: 'https://randomuser.me/api/portraits/women/22.jpg',
-        isOnline: true,
-        lastSeen: 'Online',
-      },
-      lastMessage: 'Can you send me the files?',
-      timestamp: '2 days ago',
-      unreadCount: 0,
-    },
-  ];
+  useEffect(() => {
+    const fetchFriends = async () => {
+      setLoading(true);
+      try {
+        const res = await friendService.getFriends();
+        const friendsArr = res.data?.friends || res.data || [];
+        setFriends(friendsArr);
+        if (!friendsArr.length) {
+          // Fallback: fetch all users
+          const usersRes = await userService.getAllUsers();
+          setAllUsers((usersRes.data?.users || usersRes.data || []).filter(u => u.id !== user.id));
+          setShowAllUsers(true);
+        } else {
+          setShowAllUsers(false);
+        }
+      } catch (err) {
+        setFriends([]);
+        setShowAllUsers(false);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchFriends();
+  }, [user.id]);
 
-  const filteredChats = mockChats.filter(chat =>
-    chat.user.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  useEffect(() => {
+    const handleUserOnline = ({ userId, isOnline }) => {
+      setFriends(friends => friends.map(f => f.id === userId ? { ...f, isOnline } : f));
+      setAllUsers(users => users.map(u => u.id === userId ? { ...u, isOnline } : u));
+    };
+    socketService.on('user-online', handleUserOnline);
+    return () => {
+      socketService.off('user-online', handleUserOnline);
+    };
+  }, []);
 
-  return (
-    <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="p-6 border-b border-gray-200 bg-white">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-xl font-bold text-gray-800">Messages</h2>
-            <p className="text-sm text-gray-500 mt-1">{filteredChats.length} conversations</p>
-          </div>
-          <button className="p-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm">
-            <PlusIcon className="h-5 w-5" />
-          </button>
-        </div>
-        
-        {/* Search */}
-        <div className="relative">
-          <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search conversations..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-all"
-          />
-        </div>
-      </div>
+  useEffect(() => {
+    // Listen for new messages to update last message and unread count
+    const handleNewMessage = (msg) => {
+      setLastMessages(prev => {
+        const userId = msg.from === user.id ? msg.to : msg.from;
+        const isCurrentChat = selectedChat?.user?.id === userId;
+        return {
+          ...prev,
+          [userId]: {
+            text: msg.text || msg.content,
+            time: msg.timestamp || (msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''),
+            unreadCount: isCurrentChat ? 0 : ((prev[userId]?.unreadCount || 0) + 1),
+          }
+        };
+      });
+    };
+    socketService.on('chat-message', handleNewMessage);
+    return () => socketService.off('chat-message', handleNewMessage);
+  }, [user.id, selectedChat]);
 
-      {/* Chat List */}
-      <div className="flex-1 overflow-y-auto">
-        {filteredChats.length === 0 ? (
-          <div className="flex items-center justify-center h-full p-6">
-            <div className="text-center">
-              <div className="text-gray-400 text-4xl mb-2">🔍</div>
-              <p className="text-gray-500">No conversations found</p>
-            </div>
-          </div>
-        ) : (
-          filteredChats.map((chat) => (
-            <div
-              key={chat.id}
-              onClick={() => onSelectChat(chat)}
-              className={`flex items-center gap-4 p-4 cursor-pointer transition-all hover:bg-gray-50 border-l-4 ${
-                selectedChat?.id === chat.id 
-                  ? 'bg-blue-50 border-l-blue-500' 
-                  : 'border-l-transparent'
-              }`}
+  const BASE_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5002';
+  // Helper to get avatar URL
+  const getAvatarUrl = (user) => {
+    if (!user) {
+      return 'https://ui-avatars.com/api/?name=Unknown&background=random';
+    }
+    if (user.avatar) {
+      if (user.avatar.startsWith('http')) {
+        return user.avatar;
+      }
+      if (user.avatar.startsWith('uploads/')) {
+        return `${BASE_URL}/${user.avatar}`;
+      }
+      if (user.avatar.startsWith('avatars/')) {
+        return `${BASE_URL}/uploads/${user.avatar}`;
+      }
+      return `${BASE_URL}/uploads/avatars/${user.avatar}`;
+    }
+    return `https://ui-avatars.com/api/?name=${user.firstName || user.username || 'Unknown'}&background=random`;
+  };
+
+  if (loading) {
+    return <div className="p-4 text-gray-500">Loading friends...</div>;
+  }
+
+  if (!friends.length && showAllUsers) {
+    return (
+      <div className="p-4">
+        <div className="text-gray-500 mb-2">No friends found. People you may know:</div>
+        <div className="divide-y divide-gray-100 overflow-y-auto h-full">
+          {allUsers.map(person => (
+            <button
+              key={person.id}
+              onClick={() => onSelectChat({ user: person })}
+              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-blue-50 transition text-left"
             >
-              {/* Avatar */}
-              <div className="relative flex-shrink-0">
+              <div className="relative">
                 <img
-                  src={chat.user.avatar}
-                  alt={chat.user.name}
-                  className="w-12 h-12 rounded-full border-2 border-gray-200 object-cover"
+                  src={getAvatarUrl(person)}
+                  alt={person.firstName || person.username || 'User'}
+                  className="w-10 h-10 rounded-full object-cover border"
                 />
-                {chat.user.isOnline && (
-                  <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
+                {person.isOnline && (
+                  <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
                 )}
               </div>
-
-              {/* Chat Info */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between mb-1">
-                  <h3 className="font-semibold text-gray-800 truncate">{chat.user.name}</h3>
-                  <span className="text-xs text-gray-500 flex-shrink-0">{chat.timestamp}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-gray-600 truncate">{chat.lastMessage}</p>
-                  {chat.unreadCount > 0 && (
-                    <span className="bg-blue-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 ml-2">
-                      {chat.unreadCount > 9 ? '9+' : chat.unreadCount}
-                    </span>
-                  )}
-                </div>
+                <div className="font-semibold text-gray-800 truncate">{person.firstName || person.username || 'User'}</div>
+                <div className="text-xs text-gray-500 truncate">{person.isOnline ? 'Online' : 'Offline'}</div>
               </div>
-
-              {/* More Options */}
-              <button className="p-1 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors flex-shrink-0">
-                <EllipsisVerticalIcon className="h-4 w-4" />
-              </button>
-            </div>
-          ))
-        )}
+            </button>
+          ))}
+        </div>
       </div>
+    );
+  }
+
+  if (!friends.length) {
+    return <div className="p-4 text-gray-500">No friends found. Connect with friends to start chatting!</div>;
+  }
+
+  return (
+    <div className="overflow-y-auto h-full bg-white p-2">
+      {friends.map(friend => {
+        const lastMsg = lastMessages[friend.id] || {};
+        const isSelected = selectedChat?.user?.id === friend.id;
+        return (
+          <button
+            key={friend.id}
+            onClick={() => {
+              onSelectChat({ user: friend });
+              setLastMessages(prev => ({ ...prev, [friend.id]: { ...prev[friend.id], unreadCount: 0 } }));
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-2 mb-1 transition text-left rounded-xl ${isSelected ? 'bg-blue-50' : ''}`}
+            style={{ boxShadow: 'none', border: 'none' }}
+          >
+            <div className="relative">
+              <img
+                src={getAvatarUrl(friend)}
+                alt={friend.firstName || friend.username || 'User'}
+                className="w-12 h-12 rounded-full object-cover border"
+              />
+              {friend.isOnline && (
+                <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex justify-between items-center">
+                <span className="font-bold text-black text-base truncate">{friend.firstName || friend.username || 'User'}</span>
+                {lastMsg.time && <span className="text-xs text-gray-400 ml-2 whitespace-nowrap">{lastMsg.time}</span>}
+              </div>
+              <div className="flex justify-between items-center mt-1">
+                <span className="text-xs text-gray-500 truncate max-w-[120px]">{lastMsg.text || (friend.isOnline ? 'Online' : 'Offline')}</span>
+                {lastMsg.unreadCount > 0 && (
+                  <span className="ml-2 bg-blue-500 text-white text-xs rounded-full px-2 py-0.5">{lastMsg.unreadCount}</span>
+                )}
+              </div>
+            </div>
+          </button>
+        );
+      })}
     </div>
   );
 };

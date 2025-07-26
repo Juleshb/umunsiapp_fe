@@ -6,7 +6,13 @@
     "start": "node index.js",
     "dev": "nodemon index.js",
     "build": "echo 'No build step required for Node.js'",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "migrate": "prisma migrate deploy && prisma generate",
+    "prisma:generate": "prisma generate",
+    "prisma:studio": "prisma studio",
+    "prisma:migrate:dev": "prisma migrate dev --name init",
+    "prisma:migrate:deploy": "prisma migrate deploy",
+    "prisma:migrate:reset": "prisma migrate reset --force && prisma generate"
   },
   "keywords": [],
   "author": "",

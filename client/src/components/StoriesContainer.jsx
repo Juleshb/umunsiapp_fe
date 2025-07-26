@@ -4,7 +4,7 @@ import Story from './Story';
 import StoryViewer from './StoryViewer';
 import storyService from '../services/storyService';
 import socketService from '../services/socketService';
-import { PlusIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
 const StoriesContainer = ({ onCreateStory, refreshRef }) => {
@@ -17,6 +17,21 @@ const StoriesContainer = ({ onCreateStory, refreshRef }) => {
   const [newStoryIds, setNewStoryIds] = useState(new Set());
   const [isCheckingNewStories, setIsCheckingNewStories] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
+
+  // Add a ref for the scrollable container
+  const storyBarRef = React.useRef(null);
+
+  // Scroll handlers
+  const scrollLeft = () => {
+    if (storyBarRef.current) {
+      storyBarRef.current.scrollBy({ left: -200, behavior: 'smooth' });
+    }
+  };
+  const scrollRight = () => {
+    if (storyBarRef.current) {
+      storyBarRef.current.scrollBy({ left: 200, behavior: 'smooth' });
+    }
+  };
 
   // Fetch stories from backend
   useEffect(() => {
@@ -320,20 +335,27 @@ const StoriesContainer = ({ onCreateStory, refreshRef }) => {
             </span>
           </div>
         </div>
-        <div className="flex gap-2 sm:gap-4 overflow-x-auto scrollbar-hide pb-2">
-          {stories.map((story, index) => (
-            <div key={story.id} onClick={() => handleStoryClick(index)} className="flex-shrink-0">
-              <Story story={story} />
+        <div className="flex items-center">
+          {/* Left arrow */}
+          <button onClick={scrollLeft} className="p-1 rounded-full bg-white shadow hover:bg-gray-100 mr-2 disabled:opacity-50" aria-label="Scroll left">
+            <ChevronLeftIcon className="h-6 w-6 text-gray-500" />
+          </button>
+          <div ref={storyBarRef} className="flex gap-2 sm:gap-4 overflow-x-auto scrollbar-hide pb-2">
+            {/* Create story card */}
+            <div onClick={() => onCreateStory && onCreateStory()} className="flex-shrink-0 cursor-pointer">
+              <Story isCreateCard user={user} />
             </div>
-          ))}
-          {isCheckingNewStories && (
-            <div className="flex-shrink-0 flex flex-col items-center gap-1">
-              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gray-200 flex items-center justify-center">
-                <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+            {/* Other stories (skip 'Your story') */}
+            {stories.slice(1).map((story, index) => (
+              <div key={story.id} onClick={() => handleStoryClick(index + 1)} className="flex-shrink-0">
+                <Story story={story} />
               </div>
-              <span className="text-xs text-gray-500">Checking...</span>
-            </div>
-          )}
+            ))}
+          </div>
+          {/* Right arrow */}
+          <button onClick={scrollRight} className="p-1 rounded-full bg-white shadow hover:bg-gray-100 ml-2 disabled:opacity-50" aria-label="Scroll right">
+            <ChevronRightIcon className="h-6 w-6 text-gray-500" />
+          </button>
         </div>
       </div>
 

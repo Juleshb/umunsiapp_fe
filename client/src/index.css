@@ -12,11 +12,82 @@
 }
 
 
-/* body {
-  font-family: 'Inter', system-ui, sans-serif;
-  background: #f7f8fa;
-  color: #222;
-} */
+body {
+  background: linear-gradient(135deg, #b6e388 0%, #6bcf63 100%) !important;
+  min-height: 100vh;
+  position: relative;
+}
+.liquid-grass-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -20;
+  pointer-events: none;
+  width: 100vw;
+  height: 100vh;
+  background: linear-gradient(135deg, #b6e388 0%, #6bcf63 100%);
+  overflow: hidden;
+}
+.liquid-grass-bg svg {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100vw;
+  height: 120px;
+  z-index: -19;
+  display: block;
+}
+
+/* Animated dots background */
+.animated-dots-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -10;
+  pointer-events: none;
+  overflow: hidden;
+  opacity: 0.4;
+}
+.animated-dot {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.7;
+  animation: moveDot 6s linear infinite;
+}
+.animated-dot.yellow { background: #FFD600; width: 16px; height: 16px; }
+.animated-dot.white { background: #fff; width: 10px; height: 10px; }
+.animated-dot.dot1 { left: 10vw; top: 20vh; animation-delay: 0s; }
+.animated-dot.dot2 { left: 80vw; top: 30vh; animation-delay: 1s; }
+.animated-dot.dot3 { left: 50vw; top: 70vh; animation-delay: 2s; }
+.animated-dot.dot4 { left: 30vw; top: 50vh; animation-delay: 3s; }
+.animated-dot.dot5 { left: 70vw; top: 80vh; animation-delay: 4s; }
+
+@keyframes moveDot {
+  0% { transform: translateY(0); opacity: 0.7; }
+  50% { transform: translateY(-30px); opacity: 1; }
+  100% { transform: translateY(0); opacity: 0.7; }
+}
+
+.animated-dots-bg2 {
+  position: fixed;
+  inset: 0;
+  z-index: -10;
+  pointer-events: none;
+  overflow: hidden;
+  opacity: 0.2;
+}
+.animated-dot2 {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.5;
+  animation: moveDot2 10s linear infinite;
+}
+.animated-dot2.yellow { background: #FFD600; width: 10px; height: 10px; }
+.animated-dot2.white { background: #fff; width: 6px; height: 6px; }
+
+@keyframes moveDot2 {
+  0% { transform: translateY(0); opacity: 0.5; }
+  50% { transform: translateY(40px); opacity: 0.8; }
+  100% { transform: translateY(0); opacity: 0.5; }
+}
 
 /* h1, h2, h3, h4, h5, h6 {
   font-family: 'Lora', serif;
@@ -105,4 +176,8 @@
   border: none;
   border-top: 1px solid #e5e7eb;
   margin: 2rem 0;
+}
+#root {
+  position: relative;
+  z-index: 0;
 }

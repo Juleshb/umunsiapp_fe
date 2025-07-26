@@ -107,9 +107,11 @@ class PostService {
   }
 
   // Add comment to a post
-  async addComment(postId, content) {
+  async addComment(postId, content, parentId) {
     try {
-      const response = await api.post(`/posts/${postId}/comments`, { content });
+      const body = { content };
+      if (parentId) body.parentId = parentId;
+      const response = await api.post(`/posts/${postId}/comments`, body);
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Failed to add comment' };

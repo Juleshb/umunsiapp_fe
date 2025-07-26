@@ -5,6 +5,7 @@ const { createServer } = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 const { PrismaClient } = require('@prisma/client');
+const onlineUsers = require('./utils/onlineUsers');
 
 // Load environment variables
 dotenv.config();
@@ -13,7 +14,7 @@ const app = express();
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL || "http://localhost:3001",
+    origin: process.env.CLIENT_URL || "http://localhost:3000",
     methods: ["GET", "POST"]
   }
 });
@@ -22,7 +23,7 @@ const prisma = new PrismaClient();
 
 // Middleware
 app.use(cors({
-  origin: process.env.CLIENT_URL || "http://localhost:3001",
+  origin: process.env.CLIENT_URL || "http://localhost:3000",
   credentials: true
 }));
 app.use(express.json());
@@ -41,6 +42,7 @@ app.use('/api/subscription', require('./routes/subscriptionRoutes'));
 app.use('/api/friends', require('./routes/friendRoutes'));
 app.use('/api/stories', require('./routes/storyRoutes'));
 app.use('/api/articles', require('./routes/articleRoutes'));
+app.use('/api/messages', require('./routes/messageRoutes'));
 
 // Basic route
 app.get('/', (req, res) => {
@@ -67,7 +69,20 @@ io.on('connection', (socket) => {
   // Join user to their personal room
   socket.on('join-user', (userId) => {
     socket.join(`user-${userId}`);
+    onlineUsers.add(userId);
+    socket.userId = userId; // Track for disconnect
+    // Broadcast online status
+    io.emit('user-online', { userId, isOnline: true });
     console.log(`User ${userId} joined their room`);
+  });
+
+  // Real-time chat message relay
+  socket.on('chat-message', (data) => {
+    console.log('Socket received chat-message:', data);
+    io.to(`user-${data.to}`).emit('chat-message', data);
+    console.log('Emitted chat-message to recipient:', data.to);
+    io.to(`user-${data.from}`).emit('chat-message', data); // echo to sender
+    console.log('Emitted chat-message to sender:', data.from);
   });
 
   // Handle story creation
@@ -103,17 +118,21 @@ io.on('connection', (socket) => {
 
   // Handle typing indicators
   socket.on('typing', (data) => {
-    const { receiverId, isTyping } = data;
-    io.to(`user_${receiverId}`).emit('user_typing', {
-      userId: socket.userId,
-      isTyping
-    });
+    // data: { to, from, isTyping }
+    io.to(`user-${data.to}`).emit('typing', data);
   });
 
   socket.on('disconnect', () => {
+    if (socket.userId) {
+      onlineUsers.delete(socket.userId);
+      // Broadcast offline status
+      io.emit('user-online', { userId: socket.userId, isOnline: false });
+    }
     console.log('User disconnected:', socket.id);
   });
 });
+
+module.exports.onlineUsers = onlineUsers;
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -135,7 +154,7 @@ server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 API URL: http://localhost:${PORT}`);
-  console.log(`🌐 CORS Origin: ${process.env.CLIENT_URL || 'http://localhost:3001'}`);
+  console.log(`🌐 CORS Origin: ${process.env.CLIENT_URL || 'http://localhost:3000'}`);
 });
 
 // Graceful shutdown
