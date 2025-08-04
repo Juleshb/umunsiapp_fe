@@ -9,6 +9,8 @@ import Home from './pages/Home';
 import Chat from './pages/Chat';
 import Profile from './pages/Profile';
 import Friends from './pages/Friends';
+import Clubs from './pages/Clubs';
+import ClubDetail from './pages/ClubDetail';
 import Articles from './pages/Articles';
 import ArticleView from './components/ArticleView';
 import socketService from './services/socketService';
@@ -48,6 +50,16 @@ function App() {
             <Route path="/friends" element={
               <ProtectedRoute>
                 <Friends />
+              </ProtectedRoute>
+            } />
+            <Route path="/clubs" element={
+              <ProtectedRoute>
+                <Clubs />
+              </ProtectedRoute>
+            } />
+            <Route path="/clubs/:id" element={
+              <ProtectedRoute>
+                <ClubDetail />
               </ProtectedRoute>
             } />
             <Route path="/articles" element={

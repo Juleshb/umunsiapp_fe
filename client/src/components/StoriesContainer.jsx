@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import Story from './Story';
 import StoryViewer from './StoryViewer';
+import StoryPreviewModal from './StoryPreviewModal';
 import storyService from '../services/storyService';
 import socketService from '../services/socketService';
-import { PlusIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { Plus, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const StoriesContainer = ({ onCreateStory, refreshRef }) => {
@@ -13,6 +14,7 @@ const StoriesContainer = ({ onCreateStory, refreshRef }) => {
   const [loading, setLoading] = useState(true);
   const [currentStoryIndex, setCurrentStoryIndex] = useState(null);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [lastFetchTime, setLastFetchTime] = useState(null);
   const [newStoryIds, setNewStoryIds] = useState(new Set());
   const [isCheckingNewStories, setIsCheckingNewStories] = useState(false);
@@ -80,16 +82,52 @@ const StoriesContainer = ({ onCreateStory, refreshRef }) => {
       toast.success('A story was deleted');
     };
 
+    // Listen for story likes
+    const handleStoryLiked = (data) => {
+      console.log('Real-time story liked received:', data);
+      // Update the story's like status in the stories array
+      setStories(prev => prev.map(story => {
+        if (story.slides && story.slides.some(slide => slide.storyId === data.storyId)) {
+          return {
+            ...story,
+            isLiked: true,
+            likesCount: (story.likesCount || 0) + 1
+          };
+        }
+        return story;
+      }));
+    };
+
+    // Listen for story unlikes
+    const handleStoryUnliked = (data) => {
+      console.log('Real-time story unliked received:', data);
+      // Update the story's like status in the stories array
+      setStories(prev => prev.map(story => {
+        if (story.slides && story.slides.some(slide => slide.storyId === data.storyId)) {
+          return {
+            ...story,
+            isLiked: false,
+            likesCount: Math.max((story.likesCount || 0) - 1, 0)
+          };
+        }
+        return story;
+      }));
+    };
+
     // Add event listeners
     socketService.on('new-story', handleNewStory);
     socketService.on('story-updated', handleStoryUpdated);
     socketService.on('story-deleted', handleStoryDeleted);
+    socketService.on('story-liked', handleStoryLiked);
+    socketService.on('story-unliked', handleStoryUnliked);
 
     // Cleanup listeners on unmount
     return () => {
       socketService.off('new-story', handleNewStory);
       socketService.off('story-updated', handleStoryUpdated);
       socketService.off('story-deleted', handleStoryDeleted);
+      socketService.off('story-liked', handleStoryLiked);
+      socketService.off('story-unliked', handleStoryUnliked);
     };
   }, [socketService]);
 
@@ -271,9 +309,10 @@ const StoriesContainer = ({ onCreateStory, refreshRef }) => {
         onCreateStory();
       }
     } else {
-      // Other stories - open viewer
+      // Other stories - open full screen preview modal
       setCurrentStoryIndex(index);
       setCurrentSlideIndex(0);
+      setIsPreviewModalOpen(true);
     }
   };
 
@@ -313,10 +352,10 @@ const StoriesContainer = ({ onCreateStory, refreshRef }) => {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-xl shadow-sm border p-3 sm:p-4 mb-4 sm:mb-6 w-full max-w-xl">
-        <div className="flex gap-2 sm:gap-4 overflow-x-auto scrollbar-hide pb-2">
+      <div className="bg-gradient-to-r from-gray-800/90 via-gray-700/90 to-gray-800/90 lg:from-gray-800 lg:via-gray-800 lg:to-gray-800 rounded-2xl lg:rounded-xl border border-gray-600/60 lg:border-gray-700 p-3 lg:p-4 mb-4 lg:mb-6 overflow-hidden backdrop-blur-sm">
+        <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2">
           <div className="flex-shrink-0">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gray-200 animate-pulse"></div>
+            <div className="w-16 h-16 rounded-full bg-gray-700 animate-pulse"></div>
           </div>
         </div>
       </div>
@@ -325,22 +364,31 @@ const StoriesContainer = ({ onCreateStory, refreshRef }) => {
 
   return (
     <>
-      <div className="bg-white rounded-xl shadow-sm border p-3 sm:p-4 mb-4 sm:mb-6 w-full max-w-xl">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-lg font-semibold text-gray-900">Stories</h3>
-          <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-            <span className="text-xs text-gray-500">
+      <div className="bg-gradient-to-r from-gray-800/90 via-gray-700/90 to-gray-800/90 lg:from-gray-800 lg:via-gray-800 lg:to-gray-800 rounded-2xl lg:rounded-xl border border-gray-600/60 lg:border-gray-700 p-3 lg:p-4 mb-4 lg:mb-6 overflow-hidden backdrop-blur-sm">
+        <div className="flex items-center justify-between mb-3 lg:mb-4">
+          <div className="flex items-center space-x-2 lg:space-x-3">
+            <div className="p-1.5 lg:p-2 bg-gradient-to-r from-pink-500 to-purple-600 rounded-lg">
+              <Sparkles className="h-3 w-3 lg:h-4 lg:w-4 text-white" />
+            </div>
+            <h3 className="text-base lg:text-lg font-semibold text-white">Stories</h3>
+          </div>
+          <div className="flex items-center gap-1 lg:gap-2">
+            <div className={`w-1.5 h-1.5 lg:w-2 lg:h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+            <span className="text-xs text-gray-400 hidden sm:block">
               {isConnected ? 'Live' : 'Offline'}
             </span>
           </div>
         </div>
         <div className="flex items-center">
-          {/* Left arrow */}
-          <button onClick={scrollLeft} className="p-1 rounded-full bg-white shadow hover:bg-gray-100 mr-2 disabled:opacity-50" aria-label="Scroll left">
-            <ChevronLeftIcon className="h-6 w-6 text-gray-500" />
+          {/* Left arrow - Hidden on mobile */}
+          <button 
+            onClick={scrollLeft} 
+            className="hidden lg:block p-2 rounded-full bg-gray-700 hover:bg-gray-600 mr-3 disabled:opacity-50 transition-colors" 
+            aria-label="Scroll left"
+          >
+            <ChevronLeft className="h-5 w-5 text-gray-300" />
           </button>
-          <div ref={storyBarRef} className="flex gap-2 sm:gap-4 overflow-x-auto scrollbar-hide pb-2">
+          <div ref={storyBarRef} className="flex gap-3 lg:gap-4 overflow-x-auto scrollbar-hide pb-2 px-1 lg:px-0">
             {/* Create story card */}
             <div onClick={() => onCreateStory && onCreateStory()} className="flex-shrink-0 cursor-pointer">
               <Story isCreateCard user={user} />
@@ -352,15 +400,33 @@ const StoriesContainer = ({ onCreateStory, refreshRef }) => {
               </div>
             ))}
           </div>
-          {/* Right arrow */}
-          <button onClick={scrollRight} className="p-1 rounded-full bg-white shadow hover:bg-gray-100 ml-2 disabled:opacity-50" aria-label="Scroll right">
-            <ChevronRightIcon className="h-6 w-6 text-gray-500" />
+          {/* Right arrow - Hidden on mobile */}
+          <button 
+            onClick={scrollRight} 
+            className="hidden lg:block p-2 rounded-full bg-gray-700 hover:bg-gray-600 ml-3 disabled:opacity-50 transition-colors" 
+            aria-label="Scroll right"
+          >
+            <ChevronRight className="h-5 w-5 text-gray-300" />
           </button>
         </div>
       </div>
 
-      {/* Story Viewer Modal */}
-      {currentStoryIndex !== null && (
+      {/* Story Preview Modal - Full Screen */}
+      {isPreviewModalOpen && currentStoryIndex !== null && (
+        <StoryPreviewModal
+          isOpen={isPreviewModalOpen}
+          story={stories[currentStoryIndex]}
+          currentSlideIndex={currentSlideIndex}
+          onClose={() => {
+            setIsPreviewModalOpen(false);
+            setCurrentStoryIndex(null);
+            setCurrentSlideIndex(0);
+          }}
+        />
+      )}
+
+      {/* Story Viewer Modal - Fallback */}
+      {currentStoryIndex !== null && !isPreviewModalOpen && (
         <StoryViewer
           story={stories[currentStoryIndex]}
           currentSlideIndex={currentSlideIndex}

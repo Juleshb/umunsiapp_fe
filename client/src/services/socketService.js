@@ -16,7 +16,7 @@ class SocketService {
     const socketUrl = import.meta.env.VITE_SOCKET_URL || 
                      (import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'http://localhost:5002');
 
-    this.socket = io('http://localhost:5002', {
+    this.socket = io(socketUrl, {
       auth: {
         token
       },
@@ -70,6 +70,36 @@ class SocketService {
     this.socket.on('story-deleted', (storyId) => {
       console.log('Story deleted:', storyId);
       this.notifyListeners('story-deleted', storyId);
+    });
+
+    // Listen for story likes
+    this.socket.on('story-liked', (data) => {
+      console.log('Story liked:', data);
+      this.notifyListeners('story-liked', data);
+    });
+
+    // Listen for story unlikes
+    this.socket.on('story-unliked', (data) => {
+      console.log('Story unliked:', data);
+      this.notifyListeners('story-unliked', data);
+    });
+
+    // Listen for chat messages
+    this.socket.on('chat-message', (messageData) => {
+      console.log('Chat message received:', messageData);
+      this.notifyListeners('chat-message', messageData);
+    });
+
+    // Listen for typing indicators
+    this.socket.on('typing', (typingData) => {
+      console.log('Typing indicator received:', typingData);
+      this.notifyListeners('typing', typingData);
+    });
+
+    // Listen for user online status
+    this.socket.on('user-online', (userData) => {
+      console.log('User online status received:', userData);
+      this.notifyListeners('user-online', userData);
     });
 
     // Listen for article like updates (real-time likes)
@@ -147,6 +177,32 @@ class SocketService {
   emitStoryDeleted(storyId) {
     if (this.socket && this.isConnected) {
       this.socket.emit('story-deleted', storyId);
+    }
+  }
+
+  emitStoryLiked(storyId) {
+    if (this.socket && this.isConnected) {
+      this.socket.emit('story-liked', { storyId });
+    }
+  }
+
+  emitStoryUnliked(storyId) {
+    if (this.socket && this.isConnected) {
+      this.socket.emit('story-unliked', { storyId });
+    }
+  }
+
+  // Emit chat message
+  emitChatMessage(messageData) {
+    if (this.socket && this.isConnected) {
+      this.socket.emit('chat-message', messageData);
+    }
+  }
+
+  // Emit typing indicator
+  emitTyping(typingData) {
+    if (this.socket && this.isConnected) {
+      this.socket.emit('typing', typingData);
     }
   }
 

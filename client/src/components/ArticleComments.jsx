@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { getArticleComments, addArticleComment } from '../services/articleService';
 import { useAuth } from '../contexts/AuthContext';
-import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
+import { MessageCircle, Send, User } from 'lucide-react';
 import CommentItem from './CommentItem';
 import socketService from '../services/socketService';
 
@@ -94,48 +94,74 @@ const ArticleComments = ({ articleId, comments: propComments }) => {
 
   return (
     <div className="mt-10">
-      <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-        <ChatBubbleLeftRightIcon className="w-5 h-5 text-blue-500" />
-        Comments
-      </h3>
-      {user && (
-        <form onSubmit={handleSubmit} className="flex gap-2 mb-6 items-start">
-          <img src={getUserAvatar(user)} alt={getUserDisplayName(user)} className="w-9 h-9 rounded-full border shadow mt-1" />
-          <textarea
-            className="flex-1 border rounded px-3 py-2 min-h-[48px] resize-y focus:ring-2 focus:ring-blue-200 transition"
-            placeholder="Add a comment..."
-            value={content}
-            onChange={e => setContent(e.target.value)}
-            disabled={submitting}
-            rows={2}
-          />
-          <button
-            type="submit"
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 min-w-[80px]"
-            disabled={submitting || !content.trim()}
-          >
-            {submitting ? 'Posting...' : 'Post'}
-          </button>
-        </form>
-      )}
-      {loading ? (
-        <div>Loading comments...</div>
-      ) : error ? (
-        <div className="text-red-500">{error}</div>
-      ) : comments.length === 0 ? (
-        <div className="text-gray-500">No comments yet.</div>
-      ) : (
-        <div className="space-y-6 animate-fade-in">
-          {comments.map(comment => (
-            <CommentItem
-              key={comment.id}
-              comment={comment}
-              articleId={articleId}
-              // onCommentChange is not needed; real-time updates handle comment changes
-            />
-          ))}
+      <div className="bg-gray-800 rounded-xl border border-gray-700 p-6">
+        <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+          <MessageCircle className="h-5 w-5 text-blue-400" />
+          Comments ({comments.length})
+        </h3>
+
+        {/* Comment Form */}
+        {user && (
+          <form onSubmit={handleSubmit} className="mb-6">
+            <div className="flex items-start space-x-3">
+              <img
+                src={getUserAvatar(user)}
+                alt={getUserDisplayName(user)}
+                className="w-10 h-10 rounded-full object-cover border border-gray-600"
+              />
+              <div className="flex-1">
+                <textarea
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  placeholder="Add a comment..."
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  rows={3}
+                />
+                <div className="flex items-center justify-between mt-2">
+                  <span className="text-xs text-gray-400">
+                    {content.length}/500 characters
+                  </span>
+                  <button
+                    type="submit"
+                    disabled={!content.trim() || submitting}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    <Send className="h-4 w-4" />
+                    {submitting ? 'Posting...' : 'Post Comment'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </form>
+        )}
+
+        {/* Error Message */}
+        {error && (
+          <div className="mb-4 p-3 bg-red-600/10 border border-red-600/20 rounded-lg">
+            <p className="text-red-400 text-sm">{error}</p>
+          </div>
+        )}
+
+        {/* Comments List */}
+        <div className="space-y-4">
+          {loading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-3"></div>
+              <p className="text-gray-400">Loading comments...</p>
+            </div>
+          ) : comments.length === 0 ? (
+            <div className="text-center py-8">
+              <MessageCircle className="h-12 w-12 text-gray-500 mx-auto mb-3" />
+              <p className="text-gray-400">No comments yet</p>
+              <p className="text-gray-500 text-sm mt-1">Be the first to share your thoughts!</p>
+            </div>
+          ) : (
+            comments.map((comment) => (
+              <CommentItem key={comment.id} comment={comment} />
+            ))
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 };

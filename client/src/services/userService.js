@@ -61,17 +61,26 @@ const userService = {
 
   // Get profile statistics
   getProfileStatistics: async () => {
-    const token = localStorage.getItem('token');
-    const res = await fetch('/api/users/profile/statistics', {
-      method: 'GET',
-      credentials: 'include',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    if (!res.ok) throw new Error('Failed to fetch profile statistics');
-    return await res.json();
+    try {
+      const axiosInstance = createAxiosInstance();
+      const response = await axiosInstance.get('/users/profile/statistics');
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch profile statistics:', error);
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Get suggested friends
+  getSuggestedFriends: async () => {
+    try {
+      const axiosInstance = createAxiosInstance();
+      const response = await axiosInstance.get('/users/suggested-friends');
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch suggested friends:', error);
+      throw error.response?.data || error.message;
+    }
   }
 };
 

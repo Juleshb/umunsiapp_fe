@@ -1,0 +1,165 @@
+{
+  "name": "Umunsi Media - Social Media Platform",
+  "short_name": "Umunsi Media",
+  "description": "A modern social media platform with chat, clubs, articles, and community features",
+  "version": "1.0.0",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#1f2937",
+  "background_color": "#111827",
+  "scope": "/",
+  "lang": "en",
+  "categories": ["social", "communication", "entertainment"],
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot-wide.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Chart App Home Screen"
+    },
+    {
+      "src": "/screenshot-narrow.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Chart App Mobile View"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Chat",
+      "short_name": "Chat",
+      "description": "Open chat conversations",
+      "url": "/chat",
+      "icons": [
+        {
+          "src": "/chat-icon.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Clubs",
+      "short_name": "Clubs",
+      "description": "Browse and join clubs",
+      "url": "/clubs",
+      "icons": [
+        {
+          "src": "/clubs-icon.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Articles",
+      "short_name": "Articles",
+      "description": "Read and create articles",
+      "url": "/articles",
+      "icons": [
+        {
+          "src": "/articles-icon.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Profile",
+      "short_name": "Profile",
+      "description": "View your profile",
+      "url": "/profile",
+      "icons": [
+        {
+          "src": "/profile-icon.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false,
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
+  "handle_links": "preferred",
+  "protocol_handlers": [
+    {
+      "protocol": "web+chartapp",
+      "url": "/%s"
+    }
+  ],
+  "file_handlers": [
+    {
+      "action": "/upload",
+      "accept": {
+        "image/*": [".png", ".jpg", ".jpeg", ".gif", ".webp"],
+        "text/*": [".txt", ".md"]
+      }
+    }
+  ],
+  "share_target": {
+    "action": "/share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [
+        {
+          "name": "files",
+          "accept": ["image/*", "text/*"]
+        }
+      ]
+    }
+  },
+  "permissions": [
+    "notifications",
+    "camera",
+    "microphone",
+    "geolocation"
+  ],
+  "features": [
+    "Cross Platform",
+    "fast",
+    "simple",
+    "chat",
+    "clubs",
+    "articles",
+    "social"
+  ],
+  "developer": {
+    "name": "Chart App Team",
+    "url": "https://chartapp.com"
+  }
+} 

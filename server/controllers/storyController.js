@@ -139,6 +139,16 @@ const getAllStories = async (req, res) => {
             lastName: true,
             avatar: true
           }
+        },
+        storyLikes: {
+          where: {
+            userId: userId
+          }
+        },
+        _count: {
+          select: {
+            storyLikes: true
+          }
         }
       },
       orderBy: {
@@ -146,7 +156,7 @@ const getAllStories = async (req, res) => {
       }
     });
 
-    // Add full URLs for images
+    // Add full URLs for images and like information
     stories.forEach(story => {
       if (story.image) {
         story.image = getFileUrl(story.image, 'stories');
@@ -154,6 +164,14 @@ const getAllStories = async (req, res) => {
       if (story.author.avatar) {
         story.author.avatar = getFileUrl(story.author.avatar, 'avatars');
       }
+      
+      // Add like information
+      story.isLiked = story.storyLikes.length > 0;
+      story.likesCount = story._count.storyLikes;
+      
+      // Remove the raw data
+      delete story.storyLikes;
+      delete story._count;
     });
 
     res.json({
@@ -178,17 +196,7 @@ const getStoryById = async (req, res) => {
     const userId = req.user.id;
 
     const story = await prisma.story.findUnique({
-      where: { id: parseInt(id) },
-      include: {
-        author: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            avatar: true
-          }
-        }
-      }
+      where: { id: id }
     });
 
     if (!story) {
@@ -198,13 +206,21 @@ const getStoryById = async (req, res) => {
       });
     }
 
-    // Add full URLs for images
+    // Add full URLs for images and like information
     if (story.image) {
       story.image = getFileUrl(story.image, 'stories');
     }
     if (story.author.avatar) {
       story.author.avatar = getFileUrl(story.author.avatar, 'avatars');
     }
+    
+    // Add like information
+    story.isLiked = story.storyLikes.length > 0;
+    story.likesCount = story._count.storyLikes;
+    
+    // Remove the raw data
+    delete story.storyLikes;
+    delete story._count;
 
     // Check if user can view this story (author or friend)
     if (story.authorId !== userId) {
@@ -249,7 +265,7 @@ const updateStory = async (req, res) => {
     const userId = req.user.id;
 
     const story = await prisma.story.findUnique({
-      where: { id: parseInt(id) }
+      where: { id: id }
     });
 
     if (!story) {
@@ -267,7 +283,7 @@ const updateStory = async (req, res) => {
     }
 
     const updatedStory = await prisma.story.update({
-      where: { id: parseInt(id) },
+      where: { id: id },
       data: {
         content,
         image: image || story.image
@@ -326,7 +342,7 @@ const deleteStory = async (req, res) => {
     const userId = req.user.id;
 
     const story = await prisma.story.findUnique({
-      where: { id: parseInt(id) }
+      where: { id: id }
     });
 
     if (!story) {
@@ -344,13 +360,13 @@ const deleteStory = async (req, res) => {
     }
 
     await prisma.story.delete({
-      where: { id: parseInt(id) }
+      where: { id: id }
     });
 
     // Emit WebSocket event for real-time updates
     const io = req.app.get('io');
     if (io) {
-      io.emit('story-deleted', parseInt(id));
+      io.emit('story-deleted', id);
     }
 
     res.json({
@@ -367,10 +383,146 @@ const deleteStory = async (req, res) => {
   }
 };
 
+// Like/Unlike story
+const toggleStoryLike = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const story = await prisma.story.findUnique({
+      where: { id: id }
+    });
+
+    if (!story) {
+      return res.status(404).json({
+        success: false,
+        message: 'Story not found'
+      });
+    }
+
+    // Check if user already liked the story
+    const existingLike = await prisma.storyLike.findUnique({
+      where: {
+        userId_storyId: {
+          userId: userId,
+          storyId: id
+        }
+      }
+    });
+
+    if (existingLike) {
+      // Unlike the story
+      await prisma.storyLike.delete({
+        where: {
+          userId_storyId: {
+            userId: userId,
+            storyId: id
+          }
+        }
+      });
+
+      // Emit WebSocket event for real-time updates
+      const io = req.app.get('io');
+      if (io) {
+        io.emit('story-unliked', {
+          storyId: id,
+          userId: userId
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'Story unliked successfully',
+        data: { liked: false }
+      });
+    } else {
+      // Like the story
+      await prisma.storyLike.create({
+        data: {
+          userId: userId,
+          storyId: id
+        }
+      });
+
+      // Emit WebSocket event for real-time updates
+      const io = req.app.get('io');
+      if (io) {
+        io.emit('story-liked', {
+          storyId: id,
+          userId: userId
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'Story liked successfully',
+        data: { liked: true }
+      });
+    }
+  } catch (error) {
+    console.error('Toggle story like error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to toggle story like',
+      error: error.message
+    });
+  }
+};
+
+// Get story likes count
+const getStoryLikes = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const story = await prisma.story.findUnique({
+      where: { id: id }
+    });
+
+    if (!story) {
+      return res.status(404).json({
+        success: false,
+        message: 'Story not found'
+      });
+    }
+
+    const likesCount = await prisma.storyLike.count({
+      where: { storyId: id }
+    });
+
+    const userLiked = await prisma.storyLike.findUnique({
+      where: {
+        userId_storyId: {
+          userId: userId,
+          storyId: id
+        }
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'Story likes retrieved successfully',
+      data: {
+        likesCount,
+        userLiked: !!userLiked
+      }
+    });
+  } catch (error) {
+    console.error('Get story likes error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve story likes',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   createStory,
   getAllStories,
   getStoryById,
   updateStory,
-  deleteStory
+  deleteStory,
+  toggleStoryLike,
+  getStoryLikes
 }; 

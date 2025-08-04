@@ -28,6 +28,10 @@ const storage = multer.diskStorage({
       uploadPath = path.join(uploadsDir, 'articles');
     } else if (file.fieldname === 'gallery') {
       uploadPath = path.join(uploadsDir, 'articles', 'gallery');
+    } else if (file.fieldname === 'image' && req.baseUrl && req.baseUrl.includes('/clubs') && req.originalUrl && req.originalUrl.includes('/posts')) {
+      uploadPath = path.join(uploadsDir, 'club-posts');
+    } else if (file.fieldname === 'image' && req.baseUrl && req.baseUrl.includes('/clubs')) {
+      uploadPath = path.join(uploadsDir, 'clubs');
     }
     
     if (!fs.existsSync(uploadPath)) {

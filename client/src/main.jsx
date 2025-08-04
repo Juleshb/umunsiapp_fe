@@ -4,6 +4,7 @@ import './index.css'
 import App from './App.jsx'
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import pwaUtils from './utils/pwa.js';
 
 // Render animated dots background outside the app root
 if (!document.getElementById('animated-dots-bg')) {
@@ -36,6 +37,13 @@ if (!document.getElementById('animated-dots-bg2')) {
   }
   document.body.appendChild(bgDiv2);
 }
+
+// Initialize PWA
+pwaUtils.init().then(() => {
+  console.log('PWA initialized successfully');
+}).catch((error) => {
+  console.error('PWA initialization failed:', error);
+});
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

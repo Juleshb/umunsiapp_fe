@@ -2,6 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Custom utilities */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 /* Custom scrollbar hiding for stories */
 .scrollbar-hide {
   -ms-overflow-style: none;  /* Internet Explorer 10+ */
@@ -13,7 +21,7 @@
 
 
 body {
-  background: linear-gradient(135deg, #b6e388 0%, #6bcf63 100%) !important;
+  background: linear-gradient(135deg, #e4e5e2 0%, #dffcdc 100%) !important;
   min-height: 100vh;
   position: relative;
 }

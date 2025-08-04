@@ -27,6 +27,9 @@ router.post('/logout', authenticateToken, authController.logout);
 // Search users
 router.get('/', authenticateToken, authController.searchUsers);
 
+// Get suggested friends
+router.get('/suggested-friends', authenticateToken, userController.getSuggestedFriends);
+
 // Get user by ID (public profile) - must come after /me routes
 router.get('/:userId', optionalAuth, authController.getUserById);
 

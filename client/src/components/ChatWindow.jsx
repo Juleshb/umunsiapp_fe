@@ -1,158 +1,22 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { PaperAirplaneIcon, PaperClipIcon, FaceSmileIcon, PhoneIcon, VideoCameraIcon, EllipsisVerticalIcon } from '@heroicons/react/24/outline';
-import socketService from '../services/socketService';
+import React, { useState, useEffect, useRef } from 'react';
+import { Send, Paperclip, Smile, MoreHorizontal, Phone, Video, Search, ChevronLeft } from 'lucide-react';
 import chatService from '../services/chatService';
+import socketService from '../services/socketService';
 import { useAuth } from '../contexts/AuthContext';
-import axios from 'axios';
 
-const ChatWindow = ({ chat }) => {
+const ChatWindow = ({ chat, onToggleChatList, showChatList }) => {
   const { user } = useAuth();
   const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState([]);
-  const messagesEndRef = useRef(null);
   const [isTyping, setIsTyping] = useState(false);
-  const typingTimeout = useRef(null);
-
-  useEffect(() => {
-    console.log('Socket connected:', socketService.socket.connected);
-  }, []);
-
-  useEffect(() => {
-    if (!user || !chat.user?.id) return;
-    // Join user room
-    socketService.socket.emit('join-user', user.id);
-    // Always fetch chat history on mount or when chat changes
-    const fetchHistory = async () => {
-      try {
-        const res = await chatService.getMessages(chat.user.id);
-        console.log('Fetched chat history:', res);
-        if (res.data && Array.isArray(res.data)) {
-          setMessages(res.data.map(msg => ({
-            ...msg,
-            from: msg.senderId,
-            to: msg.receiverId,
-            text: msg.content,
-            timestamp: new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          })));
-        }
-      } catch (err) {
-        console.error('Failed to fetch chat history:', err);
-      }
-    };
-    fetchHistory();
-    // Listen for incoming messages
-    const handleMessage = (msg) => {
-      console.log('Received chat-message (frontend):', msg, 'Current chat:', chat.user.id, 'User:', user.id);
-      console.log(
-        'msg.from:', msg.from, typeof msg.from,
-        'msg.to:', msg.to, typeof msg.to,
-        'chat.user.id:', chat.user.id, typeof chat.user.id,
-        'user.id:', user.id, typeof user.id
-      );
-      // Only add messages for the current chat, using robust string comparison
-      if (
-        (msg.from?.toString() === chat.user.id?.toString() && msg.to?.toString() === user.id?.toString()) ||
-        (msg.from?.toString() === user.id?.toString() && msg.to?.toString() === chat.user.id?.toString())
-      ) {
-        setMessages((prev) => {
-          // Map the incoming message to the same shape as backend messages
-          const mappedMsg = {
-            ...msg,
-            from: msg.from || msg.senderId,
-            to: msg.to || msg.receiverId,
-            text: msg.text || msg.content,
-            timestamp: msg.timestamp || (msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''),
-          };
-          const updated = [...prev, mappedMsg];
-          console.log('Updated messages state:', updated);
-          return updated;
-        });
-      }
-      // Optionally show a notification for new messages in other chats
-      // else {
-      //   window.alert && window.alert('New message from ' + (msg.from === user.id ? 'You' : msg.from));
-      // }
-    };
-    console.log('Setting up chat-message listener');
-    socketService.on('chat-message', handleMessage);
-    // Listen for typing indicator
-    const handleTyping = (data) => {
-      if (data.from === chat.user.id && data.to === user.id) {
-        setIsTyping(data.isTyping);
-      }
-    };
-    socketService.on('typing', handleTyping);
-    return () => {
-      socketService.off('chat-message', handleMessage);
-      socketService.off('typing', handleTyping);
-    };
-  }, [user, chat.user.id]);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  const handleSendMessage = async () => {
-    if (message.trim()) {
-      try {
-        console.log('Sending message:', message);
-        // Save to backend first
-        const saved = await chatService.sendMessage(chat.user.id, message.trim());
-        console.log('Message saved to backend:', saved);
-        const msgData = {
-          id: saved.data?.id || Date.now(),
-          text: saved.data?.content || message,
-          from: user.id,
-          to: chat.user.id,
-          timestamp: new Date(saved.data?.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          status: 'sent',
-        };
-        console.log('Emitting chat-message via socket:', msgData);
-        socketService.socket.emit('chat-message', msgData);
-        setMessage('');
-      } catch (err) {
-        console.error('Failed to send message:', err);
-      }
-    }
-  };
-
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-  };
-
-  const handleInputChange = (e) => {
-    setMessage(e.target.value);
-    // Emit typing event
-    if (socketService.socket && chat.user?.id) {
-      socketService.socket.emit('typing', { to: chat.user.id, from: user.id, isTyping: true });
-      if (typingTimeout.current) clearTimeout(typingTimeout.current);
-      typingTimeout.current = setTimeout(() => {
-        socketService.socket.emit('typing', { to: chat.user.id, from: user.id, isTyping: false });
-      }, 1500);
-    }
-  };
-
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'sent':
-        return <div className="w-3 h-3 bg-gray-400 rounded-full"></div>;
-      case 'delivered':
-        return <div className="w-3 h-3 bg-blue-400 rounded-full"></div>;
-      case 'read':
-        return <div className="w-3 h-3 bg-blue-600 rounded-full"></div>;
-      default:
-        return null;
-    }
-  };
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const messagesEndRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
 
   const BASE_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5002';
+  
+  // Helper to get avatar URL
   const getAvatarUrl = (user) => {
     if (!user) {
       return 'https://ui-avatars.com/api/?name=Unknown&background=random';
@@ -172,98 +36,375 @@ const ChatWindow = ({ chat }) => {
     return `https://ui-avatars.com/api/?name=${user.firstName || user.username || 'Unknown'}&background=random`;
   };
 
-  return (
-    <div className="flex flex-col h-full">
-      {/* Chat Header */}
-      <div className="flex items-center justify-between p-6 bg-white">
-        <div className="flex items-center gap-4">
-          <div className="relative">
-            <img
-              src={getAvatarUrl(chat.user)}
-              alt={chat.user.name}
-              className="w-14 h-14 rounded-full object-cover border"
-            />
-            {chat.user.isOnline && (
-              <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
-            )}
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="font-bold text-black text-lg">{chat.user.name}</h3>
-              {chat.user.isOnline && <span className="w-2 h-2 bg-green-500 rounded-full inline-block"></span>}
-            </div>
-            <p className="text-xs text-green-500 mt-0.5">{chat.user.isOnline ? 'Online' : ''}</p>
-          </div>
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // Fetch messages when chat changes
+  useEffect(() => {
+    if (chat?.user?.id) {
+      fetchMessages();
+    }
+  }, [chat?.user?.id]);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  // Listen for real-time messages
+  useEffect(() => {
+    const handleNewMessage = (messageData) => {
+      console.log('Real-time message received:', messageData);
+      
+      // Only add message if it's from the current chat user or to the current chat user
+      if (messageData.senderId === chat?.user?.id || messageData.receiverId === chat?.user?.id) {
+        const newMessage = {
+          ...messageData,
+          isOwn: messageData.senderId === user.id,
+          text: messageData.content || messageData.text || messageData.message,
+          timestamp: messageData.createdAt || messageData.timestamp || new Date().toISOString()
+        };
+        
+        setMessages(prev => {
+          // Check if message already exists to avoid duplicates
+          const exists = prev.some(msg => 
+            msg.id === newMessage.id || 
+            (msg.text === newMessage.text && msg.timestamp === newMessage.timestamp)
+          );
+          if (!exists) {
+            return [...prev, newMessage];
+          }
+          return prev;
+        });
+      }
+    };
+
+    const handleTyping = (typingData) => {
+      console.log('Typing indicator received:', typingData);
+      if (typingData.from === chat?.user?.id && typingData.to === user.id) {
+        setIsTyping(typingData.isTyping);
+      }
+    };
+
+    // Ensure socket is connected
+    if (socketService.getConnectionStatus()) {
+      socketService.on('chat-message', handleNewMessage);
+      socketService.on('typing', handleTyping);
+    }
+
+    return () => {
+      socketService.off('chat-message', handleNewMessage);
+      socketService.off('typing', handleTyping);
+    };
+  }, [chat?.user?.id, user.id]);
+
+  const fetchMessages = async () => {
+    if (!chat?.user?.id) return;
+    
+    setLoading(true);
+    try {
+      const response = await chatService.getMessages(chat.user.id);
+      console.log('API Response:', response);
+      
+      // Handle different response formats and ensure we have an array
+      let fetchedMessages = [];
+      if (response && typeof response === 'object') {
+        if (Array.isArray(response)) {
+          fetchedMessages = response;
+        } else if (Array.isArray(response.messages)) {
+          fetchedMessages = response.messages;
+        } else if (response.data && Array.isArray(response.data)) {
+          fetchedMessages = response.data;
+        } else if (response.data && Array.isArray(response.data.messages)) {
+          fetchedMessages = response.data.messages;
+        }
+      }
+      
+      console.log('Fetched messages:', fetchedMessages);
+      
+      // Transform messages to include isOwn property
+      const transformedMessages = fetchedMessages.map(msg => ({
+        ...msg,
+        isOwn: msg.senderId === user.id,
+        text: msg.content || msg.text || msg.message,
+        timestamp: msg.createdAt || msg.timestamp || new Date().toISOString()
+      }));
+      
+      console.log('Transformed messages:', transformedMessages);
+      setMessages(transformedMessages);
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+      console.error('Error details:', error.response?.data || error.message);
+      setMessages([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!message.trim() || !chat?.user?.id) return;
+    
+    const messageText = message.trim();
+    setMessage(''); // Clear input immediately for better UX
+    
+    // Stop typing indicator
+    socketService.emitTyping({
+      from: user.id,
+      to: chat.user.id,
+      isTyping: false
+    });
+    
+    const newMessage = {
+      id: `temp-${Date.now()}`, // Temporary ID for optimistic update
+      text: messageText,
+      isOwn: true,
+      timestamp: new Date().toISOString(),
+      senderId: user.id,
+      receiverId: chat.user.id,
+      content: messageText
+    };
+    
+    // Optimistically add message to UI
+    setMessages(prev => [...prev, newMessage]);
+    
+    // Emit socket event for real-time delivery
+    socketService.emitChatMessage({
+      from: user.id,
+      to: chat.user.id,
+      text: messageText,
+      content: messageText,
+      id: newMessage.id,
+      timestamp: newMessage.timestamp
+    });
+    
+    try {
+      const response = await chatService.sendMessage(chat.user.id, messageText);
+      console.log('Message sent successfully:', response);
+      
+      // Update the temporary message with the real server response
+      if (response && response.data) {
+        setMessages(prev => prev.map(msg => 
+          msg.id === newMessage.id 
+            ? { ...msg, id: response.data.id, ...response.data }
+            : msg
+        ));
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      // Remove the optimistic message on error
+      setMessages(prev => prev.filter(msg => msg.id !== newMessage.id));
+      // Optionally show error message to user
+      alert('Failed to send message. Please try again.');
+    }
+  };
+
+  const handleTyping = (e) => {
+    const value = e.target.value;
+    setMessage(value);
+    
+    // Clear existing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    
+    // Emit typing start
+    if (value.trim() && chat?.user?.id) {
+      socketService.emitTyping({
+        from: user.id,
+        to: chat.user.id,
+        isTyping: true
+      });
+    }
+    
+    // Set timeout to stop typing indicator
+    typingTimeoutRef.current = setTimeout(() => {
+      if (chat?.user?.id) {
+        socketService.emitTyping({
+          from: user.id,
+          to: chat.user.id,
+          isTyping: false
+        });
+      }
+    }, 1000);
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  const handleFileUpload = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      console.log('File selected:', file.name);
+    }
+  };
+
+  // Cleanup typing timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  if (!chat) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-gray-900">
+        <div className="text-center">
+          <div className="text-gray-600 text-6xl sm:text-8xl mb-4 sm:mb-6">💬</div>
+          <h3 className="text-xl sm:text-2xl font-semibold text-white mb-2 sm:mb-3">Select a conversation</h3>
+          <p className="text-gray-400 text-base sm:text-lg">Choose a direct message to start chatting</p>
         </div>
-        <div className="flex items-center gap-4">
-          <button className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"><PhoneIcon className="h-5 w-5" /></button>
-          <button className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"><VideoCameraIcon className="h-5 w-5" /></button>
-          <button className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"><EllipsisVerticalIcon className="h-5 w-5" /></button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col h-full bg-gray-900">
+      {/* Chat Header */}
+      <div className="flex-shrink-0 bg-gray-800 border-b border-gray-700 px-3 sm:px-4 py-2 sm:py-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2 sm:space-x-3">
+            {/* Desktop Toggle Button */}
+            <button
+              onClick={onToggleChatList}
+              className="hidden lg:block p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded-md transition-colors"
+            >
+              <ChevronLeft className={`h-5 w-5 transition-transform ${showChatList ? 'rotate-0' : 'rotate-180'}`} />
+            </button>
+            <div className="relative">
+              <img
+                src={getAvatarUrl(chat.user)}
+                alt={chat.user?.firstName || chat.user?.username || 'User'}
+                className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover"
+                onError={(e) => {
+                  e.target.src = `https://ui-avatars.com/api/?name=${chat.user?.firstName || chat.user?.username || 'User'}&background=random`;
+                }}
+              />
+              <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 sm:w-4 sm:h-4 bg-green-500 border-2 border-gray-800 rounded-full"></span>
+            </div>
+            <div>
+              <h3 className="text-sm sm:text-base font-semibold text-white">
+                {chat.user?.firstName || chat.user?.username} {chat.user?.lastName}
+              </h3>
+              <p className="text-xs sm:text-sm text-green-400">Online</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-1 sm:space-x-2">
+            <button className="p-1.5 sm:p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-md transition-colors">
+              <Phone className="h-4 w-4 sm:h-5 sm:w-5" />
+            </button>
+            <button className="p-1.5 sm:p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-md transition-colors">
+              <Video className="h-4 w-4 sm:h-5 sm:w-5" />
+            </button>
+            <button className="p-1.5 sm:p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-md transition-colors">
+              <Search className="h-4 w-4 sm:h-5 sm:w-5" />
+            </button>
+            <button className="p-1.5 sm:p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-md transition-colors">
+              <MoreHorizontal className="h-4 w-4 sm:h-5 sm:w-5" />
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-8 py-6 space-y-6">
-        {messages.map((msg, idx) => {
-          const isSent = msg.from === user.id;
-          return (
+      {/* Messages Area */}
+      <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
+        {loading ? (
+          <div className="flex justify-center items-center h-32">
+            <div className="text-gray-400">Loading messages...</div>
+          </div>
+        ) : messages.length === 0 ? (
+          <div className="flex justify-center items-center h-32">
+            <div className="text-center">
+              <div className="text-gray-600 text-4xl mb-2">💬</div>
+              <div className="text-gray-400 text-sm">No messages yet</div>
+              <div className="text-gray-500 text-xs">Start the conversation!</div>
+            </div>
+          </div>
+        ) : (
+          messages.map((msg, index) => (
             <div
-              key={msg.id || idx}
-              className={`flex ${isSent ? 'justify-end' : 'justify-start'}`}
+              key={index}
+              className={`flex ${msg.isOwn ? 'justify-end' : 'justify-start'}`}
             >
-              {!isSent && (
-                <img
-                  src={getAvatarUrl(chat.user)}
-                  alt={chat.user.name}
-                  className="w-8 h-8 rounded-full mr-2 border object-cover"
-                />
-              )}
-              <div className="flex flex-col max-w-xs lg:max-w-md">
-                <div
-                  className={`px-4 py-2 rounded-2xl ${
-                    isSent
-                      ? 'bg-blue-600 text-white rounded-br-md'
-                      : 'bg-white text-black rounded-bl-md'
-                  }`}
-                  style={{ boxShadow: 'none', border: 'none' }}
-                >
-                  <p className="text-base leading-relaxed break-words">{msg.text}</p>
-                </div>
-                <span className="text-xs text-gray-400 mt-1 text-right">{msg.timestamp}</span>
+              <div
+                className={`max-w-xs sm:max-w-md lg:max-w-lg px-3 sm:px-4 py-2 sm:py-3 rounded-lg ${
+                  msg.isOwn
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-700 text-white'
+                }`}
+              >
+                <p className="text-sm sm:text-base">{msg.text}</p>
+                <p className={`text-xs mt-1 ${msg.isOwn ? 'text-blue-200' : 'text-gray-400'}`}>
+                  {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </p>
               </div>
             </div>
-          );
-        })}
-        {isTyping && (
-          <div className="text-xs text-blue-500 ml-2 mb-2">{chat.user.name || 'User'} is typing...</div>
+          ))
         )}
+        
+        {/* Typing Indicator */}
+        {isTyping && (
+          <div className="flex justify-start">
+            <div className="bg-gray-700 text-white px-3 sm:px-4 py-2 sm:py-3 rounded-lg">
+              <div className="flex space-x-1">
+                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+              </div>
+            </div>
+          </div>
+        )}
+        
         <div ref={messagesEndRef} />
       </div>
 
       {/* Message Input */}
-      <div className="p-6 bg-white">
-        <div className="flex items-center gap-3 rounded-full border border-gray-200 px-4 py-2 shadow-sm">
-          <button className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors flex-shrink-0"><PaperClipIcon className="h-5 w-5" /></button>
+      <div className="flex-shrink-0 p-3 sm:p-4 border-t border-gray-700">
+        <div className="flex items-end space-x-2 sm:space-x-3">
+          <button
+            onClick={handleFileUpload}
+            className="p-2 sm:p-2.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded-md transition-colors flex-shrink-0"
+          >
+            <Paperclip className="h-4 w-4 sm:h-5 sm:w-5" />
+          </button>
           <div className="flex-1 relative">
             <textarea
               value={message}
-              onChange={handleInputChange}
+              onChange={handleTyping}
               onKeyPress={handleKeyPress}
               placeholder="Type a message..."
-              className="w-full px-2 py-2 bg-transparent border-none outline-none resize-none text-base"
-              rows={1}
-              style={{ minHeight: '36px', maxHeight: '80px' }}
+              className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 resize-none text-sm sm:text-base"
+              rows="1"
+              style={{ minHeight: '40px', maxHeight: '120px' }}
             />
           </div>
-          <button className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors flex-shrink-0"><FaceSmileIcon className="h-5 w-5" /></button>
           <button
             onClick={handleSendMessage}
             disabled={!message.trim()}
-            className="p-3 rounded-full bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+            className="p-2 sm:p-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-md transition-colors flex-shrink-0"
           >
-            <PaperAirplaneIcon className="h-5 w-5" />
+            <Send className="h-4 w-4 sm:h-5 sm:w-5" />
+          </button>
+          <button className="p-2 sm:p-2.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded-md transition-colors flex-shrink-0">
+            <Smile className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>
         </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          onChange={handleFileChange}
+          className="hidden"
+          accept="image/*,video/*,audio/*,.pdf,.doc,.docx"
+        />
       </div>
     </div>
   );

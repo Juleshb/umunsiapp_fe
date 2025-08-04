@@ -121,6 +121,38 @@ const storyService = {
       throw new Error(error.response?.data?.message || 'Failed to delete story');
     }
   },
+
+  // Like/Unlike story
+  async toggleStoryLike(id) {
+    try {
+      const response = await api.post(`/stories/${id}/like`);
+
+      // Emit WebSocket event for real-time updates
+      if (response.data.success && socketService.getConnectionStatus()) {
+        if (response.data.data.liked) {
+          socketService.emitStoryLiked(id);
+        } else {
+          socketService.emitStoryUnliked(id);
+        }
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error('Toggle story like error:', error);
+      throw new Error(error.response?.data?.message || 'Failed to toggle story like');
+    }
+  },
+
+  // Get story likes
+  async getStoryLikes(id) {
+    try {
+      const response = await api.get(`/stories/${id}/likes`);
+      return response.data;
+    } catch (error) {
+      console.error('Get story likes error:', error);
+      throw new Error(error.response?.data?.message || 'Failed to get story likes');
+    }
+  },
 };
 
 export default storyService;

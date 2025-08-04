@@ -43,6 +43,7 @@ app.use('/api/friends', require('./routes/friendRoutes'));
 app.use('/api/stories', require('./routes/storyRoutes'));
 app.use('/api/articles', require('./routes/articleRoutes'));
 app.use('/api/messages', require('./routes/messageRoutes'));
+app.use('/api/clubs', require('./routes/clubRoutes'));
 
 // Basic route
 app.get('/', (req, res) => {
@@ -79,9 +80,24 @@ io.on('connection', (socket) => {
   // Real-time chat message relay
   socket.on('chat-message', (data) => {
     console.log('Socket received chat-message:', data);
-    io.to(`user-${data.to}`).emit('chat-message', data);
+    console.log('Message details:', {
+      from: data.from,
+      to: data.to,
+      text: data.text,
+      content: data.content,
+      id: data.id
+    });
+    
+    // Check if recipient room exists
+    const recipientRoom = `user-${data.to}`;
+    const senderRoom = `user-${data.from}`;
+    
+    console.log('Sending to recipient room:', recipientRoom);
+    io.to(recipientRoom).emit('chat-message', data);
     console.log('Emitted chat-message to recipient:', data.to);
-    io.to(`user-${data.from}`).emit('chat-message', data); // echo to sender
+    
+    console.log('Sending to sender room:', senderRoom);
+    io.to(senderRoom).emit('chat-message', data); // echo to sender
     console.log('Emitted chat-message to sender:', data.from);
   });
 
@@ -118,8 +134,18 @@ io.on('connection', (socket) => {
 
   // Handle typing indicators
   socket.on('typing', (data) => {
+    console.log('Socket received typing event:', data);
+    console.log('Typing details:', {
+      from: data.from,
+      to: data.to,
+      isTyping: data.isTyping
+    });
+    
     // data: { to, from, isTyping }
-    io.to(`user-${data.to}`).emit('typing', data);
+    const recipientRoom = `user-${data.to}`;
+    console.log('Sending typing event to room:', recipientRoom);
+    io.to(recipientRoom).emit('typing', data);
+    console.log('Emitted typing event to:', data.to);
   });
 
   socket.on('disconnect', () => {

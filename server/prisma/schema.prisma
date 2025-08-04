@@ -53,6 +53,13 @@ model User {
   following Follow[] @relation("UserFollowing")
   articles   Article[]
   articleLikes ArticleLike[]
+  clubs      Club[] @relation("ClubOwner")
+  clubMembers ClubMember[] @relation("ClubMembers")
+  clubJoinRequests ClubJoinRequest[] @relation("ClubJoinRequests")
+  clubPosts  ClubPost[] @relation("ClubPostAuthor")
+  clubComments ClubComment[] @relation("ClubCommentAuthor")
+  clubLikes  ClubLike[] @relation("ClubLikeUser")
+  storyLikes StoryLike[] @relation("StoryLikeUser")
 
   @@map("users")
 }
@@ -126,7 +133,22 @@ model Story {
   authorId  String
   author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
+  // Relations
+  storyLikes StoryLike[]
+
   @@map("stories")
+}
+
+model StoryLike {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  userId    String
+  storyId   String
+  user      User     @relation("StoryLikeUser", fields: [userId], references: [id], onDelete: Cascade)
+  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, storyId])
+  @@map("story_likes")
 }
 
 model Message {
@@ -250,4 +272,125 @@ model ArticleLike {
 
   @@unique([userId, articleId])
   @@map("article_likes")
+}
+
+// Club Category Enum
+enum ClubCategory {
+  MEDIA
+  CULTURAL
+  ACADEMIC
+  DEBATE
+  NGOS
+  COMMUNITY_SERVICE
+  COUNTRY
+  FRATERNITIES_SORORITIES
+  PROFESSIONAL
+  ASSOCIATION
+  ARTS
+  FILM
+  FRATERNAL
+  RELIGIOUS
+  SPIRITUAL_ORGANIZATIONS
+}
+
+// Club Model
+model Club {
+  id          String       @id @default(cuid())
+  name        String
+  description String       @db.Text
+  category    ClubCategory
+  image       String?
+  coverImage  String?
+  isPrivate   Boolean      @default(false)
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  ownerId     String
+  owner       User         @relation("ClubOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  // Relations
+  members     ClubMember[]
+  posts       ClubPost[]
+  joinRequests ClubJoinRequest[]
+
+  @@map("clubs")
+}
+
+// Club Member Model
+model ClubMember {
+  id        String   @id @default(cuid())
+  role      String   @default("member") // owner, admin, moderator, member
+  joinedAt  DateTime @default(now())
+  userId    String
+  clubId    String
+  user      User     @relation("ClubMembers", fields: [userId], references: [id], onDelete: Cascade)
+  club      Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, clubId])
+  @@map("club_members")
+}
+
+// Club Join Request Model
+model ClubJoinRequest {
+  id        String   @id @default(cuid())
+  status    String   @default("pending") // pending, approved, rejected
+  message   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId    String
+  clubId    String
+  user      User     @relation("ClubJoinRequests", fields: [userId], references: [id], onDelete: Cascade)
+  club      Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, clubId])
+  @@map("club_join_requests")
+}
+
+// Club Post Model
+model ClubPost {
+  id        String   @id @default(cuid())
+  content   String   @db.Text
+  image     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  authorId  String
+  clubId    String
+  author    User     @relation("ClubPostAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  club      Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  // Relations
+  clubComments ClubComment[]
+  clubLikes    ClubLike[]
+
+  @@map("club_posts")
+}
+
+// Club Comment Model
+model ClubComment {
+  id        String   @id @default(cuid())
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  authorId  String
+  clubPostId String
+  parentId  String?
+  author    User     @relation("ClubCommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  clubPost  ClubPost @relation(fields: [clubPostId], references: [id], onDelete: Cascade)
+  parent    ClubComment? @relation("ClubCommentParent", fields: [parentId], references: [id])
+  replies   ClubComment[] @relation("ClubCommentParent")
+
+  @@map("club_comments")
+}
+
+// Club Like Model
+model ClubLike {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  userId    String
+  clubPostId String
+  user      User     @relation("ClubLikeUser", fields: [userId], references: [id], onDelete: Cascade)
+  clubPost  ClubPost @relation(fields: [clubPostId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, clubPostId])
+  @@map("club_likes")
 }

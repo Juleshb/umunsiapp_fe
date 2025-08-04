@@ -23,4 +23,30 @@ router.post('/', authenticateToken, (req, res, next) => {
   });
 }, storyController.createStory);
 
+// Get story by ID
+router.get('/:id', authenticateToken, storyController.getStoryById);
+
+// Update story
+router.put('/:id', authenticateToken, (req, res, next) => {
+  upload.single('story')(req, res, (err) => {
+    if (err) {
+      if (err.code === 'LIMIT_FILE_COUNT' && !req.file) {
+        req.file = undefined;
+        return next();
+      }
+      return handleUploadError(err, req, res, next);
+    }
+    next();
+  });
+}, storyController.updateStory);
+
+// Delete story
+router.delete('/:id', authenticateToken, storyController.deleteStory);
+
+// Like/Unlike story
+router.post('/:id/like', authenticateToken, storyController.toggleStoryLike);
+
+// Get story likes
+router.get('/:id/likes', authenticateToken, storyController.getStoryLikes);
+
 module.exports = router; 

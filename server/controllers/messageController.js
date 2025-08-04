@@ -20,8 +20,29 @@ module.exports = {
           receiver: { select: { id: true, username: true, firstName: true, lastName: true, avatar: true } },
         }
       });
+
+      // Emit socket event for real-time delivery
+      const io = req.app.get('io');
+      if (io) {
+        const messageData = {
+          id: message.id,
+          from: message.senderId,
+          to: message.receiverId,
+          text: message.content,
+          content: message.content,
+          timestamp: message.createdAt,
+          sender: message.sender,
+          receiver: message.receiver
+        };
+        
+        console.log('Emitting chat-message event:', messageData);
+        io.to(`user-${message.senderId}`).emit('chat-message', messageData);
+        io.to(`user-${message.receiverId}`).emit('chat-message', messageData);
+      }
+
       res.json({ success: true, data: message });
     } catch (err) {
+      console.error('Error sending message:', err);
       res.status(500).json({ success: false, message: 'Failed to send message' });
     }
   },
@@ -47,6 +68,7 @@ module.exports = {
       });
       res.json({ success: true, data: messages });
     } catch (err) {
+      console.error('Error fetching messages:', err);
       res.status(500).json({ success: false, message: 'Failed to fetch messages' });
     }
   },
