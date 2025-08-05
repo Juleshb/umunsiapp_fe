@@ -11,7 +11,7 @@ import RightSidebar from './RightSidebar';
 import socketService from '../services/socketService';
 
 // Use the backend API URL as the base for images
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5002';
+const BASE_URL = import.meta.env.VITE_API_URL || 'https://umuhuza.store';
 
 // Helper to resolve any image URL (main, cover, gallery)
 const getImageUrl = (img, type = 'articles') => {
@@ -62,7 +62,7 @@ const getUserAvatar = (user) => {
     }
     // Always use /uploads/avatars/ and never /api/
     let avatarPath = user.avatar.replace(/^avatars\//, '');
-    return `http://localhost:5002/uploads/avatars/${avatarPath}`;
+    return `https://umuhuza.store/uploads/avatars/${avatarPath}`;
   }
   return `https://ui-avatars.com/api/?name=${getUserDisplayName(user)}&background=random`;
 };

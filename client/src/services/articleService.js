@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_ARTICLES_API_URL || 'http://localhost:5002/api/articles';
+const API_URL = import.meta.env.VITE_ARTICLES_API_URL || 'https://umuhuza.store/api/articles';
 
 export const getAllArticles = async () => {
   const res = await axios.get(API_URL, { withCredentials: true });

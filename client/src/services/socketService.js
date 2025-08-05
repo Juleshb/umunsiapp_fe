@@ -14,7 +14,7 @@ class SocketService {
 
     // Use separate socket URL or fallback to API URL without /api
     const socketUrl = import.meta.env.VITE_SOCKET_URL || 
-                     (import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'http://localhost:5002');
+                     (import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'https://umuhuza.store');
 
     this.socket = io(socketUrl, {
       auth: {

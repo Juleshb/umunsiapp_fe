@@ -17,8 +17,8 @@ import {
 } from 'lucide-react';
 import Logo from '../assets/Logo.png';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5002';
-const BASE_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5002';
+const API_URL = import.meta.env.VITE_API_URL || 'https://umuhuza.store';
+const BASE_URL = import.meta.env.VITE_SOCKET_URL || 'https://umuhuza.store';
 
 const Navbar = ({ onMenuToggle }) => {
   const { user, logout, isAuthenticated } = useAuth();

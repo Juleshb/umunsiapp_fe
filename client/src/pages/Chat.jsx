@@ -7,7 +7,7 @@ import ChatWindow from '../components/ChatWindow';
 import { Phone, Video, MoreHorizontal, Mail, MapPin, Calendar, User, ChevronLeft, ChevronRight, Bug } from 'lucide-react';
 import { testSocketConnection, testSocketEvents, monitorSocketEvents } from '../utils/socketTest';
 
-const BASE_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5002';
+const BASE_URL = import.meta.env.VITE_SOCKET_URL || 'https://umuhuza.store';
 const getAvatarUrl = (user) => {
   if (!user) return 'https://ui-avatars.com/api/?name=Unknown&background=random';
   if (user.avatar) {

@@ -182,7 +182,7 @@ const FindFriends = () => {
     if (!user) return 'https://ui-avatars.com/api/?name=Unknown&background=random';
     if (user.avatar) {
       if (user.avatar.startsWith('http')) return user.avatar;
-      return `http://localhost:5002/uploads/avatars/${user.avatar}`;
+      return `https://umuhuza.store/uploads/avatars/${user.avatar}`;
     }
     return `https://ui-avatars.com/api/?name=${user.firstName || user.username || 'Unknown'}&background=random`;
   };

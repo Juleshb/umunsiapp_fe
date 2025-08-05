@@ -1,7 +1,7 @@
 import axios from 'axios';
 import socketService from './socketService';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5002/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://umuhuza.store/api';
 
 // Create axios instance with auth token
 const api = axios.create({

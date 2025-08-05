@@ -14,7 +14,7 @@ const ChatWindow = ({ chat, onToggleChatList, showChatList, onBackToList }) => {
   const fileInputRef = useRef(null);
   const typingTimeoutRef = useRef(null);
 
-  const BASE_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5002';
+  const BASE_URL = import.meta.env.VITE_SOCKET_URL || 'https://umuhuza.store';
   
   // Helper to get avatar URL
   const getAvatarUrl = (user) => {

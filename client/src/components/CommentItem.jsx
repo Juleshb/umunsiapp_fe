@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { addArticleComment, updateArticleComment, deleteArticleComment } from '../services/articleService';
 import { Reply, Edit, Trash2, Send, X, Check } from 'lucide-react';
 
-const BASE_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5002';
+const BASE_URL = import.meta.env.VITE_SOCKET_URL || 'https://umuhuza.store';
 const defaultAvatar = '/default-avatar.png'; // Place a default avatar in public folder
 
 const CommentItem = ({ comment, articleId, depth = 0 }) => {

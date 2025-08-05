@@ -58,7 +58,7 @@ Create a `.env` file in the client directory:
 
 ```env
 VITE_VAPID_PUBLIC_KEY=your_vapid_public_key_here
-VITE_API_URL=http://localhost:3000
+VITE_API_URL=https://umunsi.vercel.app
 ```
 
 ### Build and Deploy

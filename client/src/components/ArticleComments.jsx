@@ -5,7 +5,7 @@ import { MessageCircle, Send, User } from 'lucide-react';
 import CommentItem from './CommentItem';
 import socketService from '../services/socketService';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5002';
+const API_URL = import.meta.env.VITE_API_URL || 'https://umuhuza.store';
 const defaultAvatar = '/default-avatar.png'; // Place a default avatar in public folder
 
 const getUserDisplayName = (user) => {

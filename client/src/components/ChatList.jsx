@@ -72,7 +72,7 @@ const ChatList = ({ onSelectChat, selectedChat }) => {
     return () => socketService.off('chat-message', handleNewMessage);
   }, [user.id, selectedChat]);
 
-  const BASE_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5002';
+  const BASE_URL = import.meta.env.VITE_SOCKET_URL || 'https://umuhuza.store';
   // Helper to get avatar URL
   const getAvatarUrl = (user) => {
     if (!user) {
