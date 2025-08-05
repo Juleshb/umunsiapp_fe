@@ -4,7 +4,7 @@ import chatService from '../services/chatService';
 import socketService from '../services/socketService';
 import { useAuth } from '../contexts/AuthContext';
 
-const ChatWindow = ({ chat, onToggleChatList, showChatList }) => {
+const ChatWindow = ({ chat, onToggleChatList, showChatList, onBackToList }) => {
   const { user } = useAuth();
   const [message, setMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -56,33 +56,63 @@ const ChatWindow = ({ chat, onToggleChatList, showChatList }) => {
     const handleNewMessage = (messageData) => {
       console.log('Real-time message received:', messageData);
       
+      // Map socket message properties to expected format
+      const senderId = messageData.senderId || messageData.from;
+      const receiverId = messageData.receiverId || messageData.to;
+      
       // Only add message if it's from the current chat user or to the current chat user
-      if (messageData.senderId === chat?.user?.id || messageData.receiverId === chat?.user?.id) {
+      if (senderId === chat?.user?.id || receiverId === chat?.user?.id || 
+          senderId === user.id || receiverId === user.id) {
         const newMessage = {
           ...messageData,
-          isOwn: messageData.senderId === user.id,
+          senderId,
+          receiverId,
+          isOwn: senderId === user.id,
           text: messageData.content || messageData.text || messageData.message,
           timestamp: messageData.createdAt || messageData.timestamp || new Date().toISOString()
         };
+        
+        console.log('Processing message:', newMessage);
         
         setMessages(prev => {
           // Check if message already exists to avoid duplicates
           const exists = prev.some(msg => 
             msg.id === newMessage.id || 
-            (msg.text === newMessage.text && msg.timestamp === newMessage.timestamp)
+            (msg.text === newMessage.text && Math.abs(new Date(msg.timestamp) - new Date(newMessage.timestamp)) < 1000)
           );
           if (!exists) {
+            console.log('Adding new message to chat');
             return [...prev, newMessage];
           }
+          console.log('Message already exists, skipping');
           return prev;
         });
+      } else {
+        console.log('Message not for current chat, ignoring');
       }
     };
 
     const handleTyping = (typingData) => {
       console.log('Typing indicator received:', typingData);
-      if (typingData.from === chat?.user?.id && typingData.to === user.id) {
+      console.log('Current chat user ID:', chat?.user?.id);
+      console.log('Current user ID:', user.id);
+      
+      // Map typing data properties
+      const fromUserId = typingData.from || typingData.fromUserId;
+      const toUserId = typingData.to || typingData.toUserId;
+      
+      console.log('Mapped typing data:', {
+        fromUserId,
+        toUserId,
+        isTyping: typingData.isTyping,
+        shouldShow: fromUserId === chat?.user?.id && toUserId === user.id
+      });
+      
+      if (fromUserId === chat?.user?.id && toUserId === user.id) {
+        console.log('Setting typing indicator:', typingData.isTyping);
         setIsTyping(typingData.isTyping);
+      } else {
+        console.log('Typing indicator not for current chat - ignoring');
       }
     };
 
@@ -148,11 +178,13 @@ const ChatWindow = ({ chat, onToggleChatList, showChatList }) => {
     setMessage(''); // Clear input immediately for better UX
     
     // Stop typing indicator
-    socketService.emitTyping({
-      from: user.id,
-      to: chat.user.id,
-      isTyping: false
-    });
+    if (socketService && typeof socketService.emitTyping === 'function') {
+      socketService.emitTyping({
+        from: user.id,
+        to: chat.user.id,
+        isTyping: false
+      });
+    }
     
     const newMessage = {
       id: `temp-${Date.now()}`, // Temporary ID for optimistic update
@@ -168,14 +200,16 @@ const ChatWindow = ({ chat, onToggleChatList, showChatList }) => {
     setMessages(prev => [...prev, newMessage]);
     
     // Emit socket event for real-time delivery
-    socketService.emitChatMessage({
-      from: user.id,
-      to: chat.user.id,
-      text: messageText,
-      content: messageText,
-      id: newMessage.id,
-      timestamp: newMessage.timestamp
-    });
+    if (socketService && typeof socketService.emitChatMessage === 'function') {
+      socketService.emitChatMessage({
+        from: user.id,
+        to: chat.user.id,
+        text: messageText,
+        content: messageText,
+        id: newMessage.id,
+        timestamp: newMessage.timestamp
+      });
+    }
     
     try {
       const response = await chatService.sendMessage(chat.user.id, messageText);
@@ -208,7 +242,7 @@ const ChatWindow = ({ chat, onToggleChatList, showChatList }) => {
     }
     
     // Emit typing start
-    if (value.trim() && chat?.user?.id) {
+    if (value.trim() && chat?.user?.id && socketService && typeof socketService.emitTyping === 'function') {
       socketService.emitTyping({
         from: user.id,
         to: chat.user.id,
@@ -218,7 +252,7 @@ const ChatWindow = ({ chat, onToggleChatList, showChatList }) => {
     
     // Set timeout to stop typing indicator
     typingTimeoutRef.current = setTimeout(() => {
-      if (chat?.user?.id) {
+      if (chat?.user?.id && socketService && typeof socketService.emitTyping === 'function') {
         socketService.emitTyping({
           from: user.id,
           to: chat.user.id,
@@ -268,11 +302,25 @@ const ChatWindow = ({ chat, onToggleChatList, showChatList }) => {
   }
 
   return (
-    <div className="flex flex-col h-full bg-gray-900">
+    <div className="flex flex-col h-full bg-gray-900 relative">
       {/* Chat Header */}
       <div className="flex-shrink-0 bg-gray-800 border-b border-gray-700 px-3 sm:px-4 py-2 sm:py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2 sm:space-x-3">
+            {/* Mobile Back Button */}
+            <button
+              onClick={() => {
+                console.log('Mobile back button clicked, onBackToList:', onBackToList);
+                if (onBackToList) {
+                  onBackToList();
+                } else {
+                  console.error('onBackToList function not provided');
+                }
+              }}
+              className="lg:hidden p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded-md transition-colors"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
             {/* Desktop Toggle Button */}
             <button
               onClick={onToggleChatList}
@@ -315,8 +363,14 @@ const ChatWindow = ({ chat, onToggleChatList, showChatList }) => {
         </div>
       </div>
 
-      {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
+      {/* Messages Area - Mobile: Account for fixed input, Desktop: Normal */}
+      <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4 
+                      lg:pb-4 
+                      pb-0 
+                      lg:h-auto 
+                      h-[calc(100vh-8rem)]
+                      lg:max-h-none 
+                      max-h-[calc(100vh-8rem)]">
         {loading ? (
           <div className="flex justify-center items-center h-32">
             <div className="text-gray-400">Loading messages...</div>
@@ -330,46 +384,51 @@ const ChatWindow = ({ chat, onToggleChatList, showChatList }) => {
             </div>
           </div>
         ) : (
-          messages.map((msg, index) => (
-            <div
-              key={index}
-              className={`flex ${msg.isOwn ? 'justify-end' : 'justify-start'}`}
-            >
+          <div className="space-y-3 sm:space-y-4 pb-6 lg:pb-0">
+            {messages.map((msg, index) => (
               <div
-                className={`max-w-xs sm:max-w-md lg:max-w-lg px-3 sm:px-4 py-2 sm:py-3 rounded-lg ${
-                  msg.isOwn
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-700 text-white'
-                }`}
+                key={index}
+                className={`flex ${msg.isOwn ? 'justify-end' : 'justify-start'}`}
               >
-                <p className="text-sm sm:text-base">{msg.text}</p>
-                <p className={`text-xs mt-1 ${msg.isOwn ? 'text-blue-200' : 'text-gray-400'}`}>
-                  {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </p>
+                <div
+                  className={`max-w-xs sm:max-w-md lg:max-w-lg px-3 sm:px-4 py-2 sm:py-3 rounded-lg ${
+                    msg.isOwn
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-700 text-white'
+                  }`}
+                >
+                  <p className="text-sm sm:text-base">{msg.text}</p>
+                  <p className={`text-xs mt-1 ${msg.isOwn ? 'text-blue-200' : 'text-gray-400'}`}>
+                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
               </div>
-            </div>
-          ))
-        )}
-        
-        {/* Typing Indicator */}
-        {isTyping && (
-          <div className="flex justify-start">
-            <div className="bg-gray-700 text-white px-3 sm:px-4 py-2 sm:py-3 rounded-lg">
-              <div className="flex space-x-1">
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+            ))}
+            
+            {/* Typing Indicator */}
+            {isTyping && (
+              <div className="flex justify-start">
+                <div className="bg-gray-700 text-white px-3 sm:px-4 py-2 sm:py-3 rounded-lg">
+                  <div className="flex space-x-1">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
         
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Message Input */}
-      <div className="flex-shrink-0 p-3 sm:p-4 border-t border-gray-700">
-        <div className="flex items-end space-x-2 sm:space-x-3">
+      {/* Message Input - Fixed on Mobile, Normal on Desktop */}
+      <div className="flex-shrink-0 lg:relative lg:p-3 lg:sm:p-4 lg:border-t lg:border-gray-700 
+                      fixed bottom-16 left-0 right-0 lg:bottom-auto lg:left-auto lg:right-auto 
+                      bg-gray-900 lg:bg-transparent border-t border-gray-700 lg:border-t-gray-700 
+                      shadow-lg lg:shadow-none z-10 p-3 sm:p-4">
+        <div className="flex items-end space-x-2 sm:space-x-3 max-w-screen-xl mx-auto lg:max-w-none">
           <button
             onClick={handleFileUpload}
             className="p-2 sm:p-2.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded-md transition-colors flex-shrink-0"
@@ -382,7 +441,7 @@ const ChatWindow = ({ chat, onToggleChatList, showChatList }) => {
               onChange={handleTyping}
               onKeyPress={handleKeyPress}
               placeholder="Type a message..."
-              className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 resize-none text-sm sm:text-base"
+              className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none text-sm sm:text-base shadow-sm"
               rows="1"
               style={{ minHeight: '40px', maxHeight: '120px' }}
             />
@@ -390,7 +449,7 @@ const ChatWindow = ({ chat, onToggleChatList, showChatList }) => {
           <button
             onClick={handleSendMessage}
             disabled={!message.trim()}
-            className="p-2 sm:p-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-md transition-colors flex-shrink-0"
+            className="p-2 sm:p-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-md transition-colors flex-shrink-0 shadow-sm"
           >
             <Send className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>

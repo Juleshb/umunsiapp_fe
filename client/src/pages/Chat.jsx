@@ -29,6 +29,7 @@ const Chat = () => {
   };
 
   const handleBackToList = () => {
+    console.log('handleBackToList called');
     setShowChatList(true);
     setSelectedChat(null);
   };
@@ -170,6 +171,7 @@ const Chat = () => {
                       chat={selectedChat} 
                       onToggleChatList={toggleChatListDesktop}
                       showChatList={showChatListDesktop}
+                      onBackToList={handleBackToList}
                     />
                   </div>
                   
