@@ -14,7 +14,7 @@ const app = express();
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL || "http://localhost:3000",
+    origin: process.env.CLIENT_URL || "https://umunsi.vercel.app",
     methods: ["GET", "POST"]
   }
 });
@@ -23,7 +23,7 @@ const prisma = new PrismaClient();
 
 // Middleware
 app.use(cors({
-  origin: process.env.CLIENT_URL || "http://localhost:3000",
+  origin: process.env.CLIENT_URL || "https://umunsi.vercel.app",
   credentials: true
 }));
 app.use(express.json());
@@ -180,7 +180,7 @@ server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 API URL: http://localhost:${PORT}`);
-  console.log(`🌐 CORS Origin: ${process.env.CLIENT_URL || 'http://localhost:3000'}`);
+  console.log(`🌐 CORS Origin: ${process.env.CLIENT_URL || 'https://umunsi.vercel.app'}`);
 });
 
 // Graceful shutdown

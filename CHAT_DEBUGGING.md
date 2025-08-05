@@ -5,7 +5,7 @@ This guide helps you troubleshoot and test the real-time chat functionality in t
 ## Issues Fixed
 
 ### 1. Socket Connection Issues
-- **Problem**: Socket service was hardcoded to connect to `http://localhost:5002` instead of using environment variables
+- **Problem**: Socket service was hardcoded to connect to `https://umuhuza.store` instead of using environment variables
 - **Fix**: Updated `socketService.js` to use `VITE_SOCKET_URL` environment variable
 - **Location**: `client/src/services/socketService.js`
 
@@ -31,10 +31,10 @@ Create a `.env` file in the `client` directory:
 
 ```env
 # API Configuration
-VITE_API_URL=http://localhost:5002/api
+VITE_API_URL=https://umuhuza.store/api
 
 # Socket Configuration
-VITE_SOCKET_URL=http://localhost:5002
+VITE_SOCKET_URL=https://umuhuza.store
 
 # App Configuration
 VITE_APP_NAME=Chart App
@@ -50,7 +50,7 @@ DATABASE_URL="your_database_connection_string"
 JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
 CORS_ORIGIN=http://localhost:5173
 SOCKET_CORS_ORIGIN=http://localhost:5173
-API_URL=http://localhost:5002
+API_URL=https://umuhuza.store
 ```
 
 ## Testing the Chat Functionality
@@ -92,7 +92,7 @@ Open browser console and look for these log messages:
 
 #### Successful Connection:
 ```
-Connected to WebSocket server at: http://localhost:5002
+Connected to WebSocket server at: https://umuhuza.store
 User [userId] joined their room
 ```
 

@@ -5,8 +5,8 @@
 1. **Environment Files**
    - [ ] Create `.env` file in `client/` directory with:
      ```
-     VITE_API_URL=http://localhost:5002/api
-     VITE_SOCKET_URL=http://localhost:5002
+     VITE_API_URL=https://umuhuza.store/api
+     VITE_SOCKET_URL=https://umuhuza.store
      ```
    - [ ] Create `.env` file in `server/` directory with:
      ```
@@ -65,7 +65,7 @@
 
 ### Successful Connection:
 ```
-Connected to WebSocket server at: http://localhost:5002
+Connected to WebSocket server at: https://umuhuza.store
 User [userId] joined their room
 ```
 
